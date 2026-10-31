@@ -18,6 +18,19 @@ README는 루트 기존 파일을 교체한다. 숨김 `.github` 폴더를 빠�
 실제 저장소의 기존 4개 파일 경로는 이 환경에서 조회하지 않았으므로,
 경로가 다르면 기존 파일명을 임의로 바꾸지 말고 위 경로를 기준으로 배치한다.
 
+### 이번 수정본 확인 및 TS6305 원인
+
+`lib/api-client-react/package.json`에는 `scripts.build`가 없다.
+이 패키지에 `pnpm --filter ... run build`를 호출하면 선언 파일이 생성되지 않는다.
+현재 로컬 workflow에는 이 잘못된 호출이 없었으며, 실제 원격 workflow는 조회하지 않았다.
+따라서 원격 파일/브랜치가 이전 버전인지 여부를 단정하지 않는다.
+
+이번 workflow의 라이브러리 단계 이름은
+**Build and verify declarations directly with TypeScript (no package build script)**이다.
+실행 로그에 **K99 DIRECT-TSC DECLARATIONS v1**, workflow commit, 소스 ZIP SHA-256이 표시되어야 한다.
+이 문구 없이 기존 filtered `build` 오류가 나오면 해당 실행의 workflow 파일 및 선택 브랜치를 확인한다.
+이전 실패 실행의 Re-run jobs 대신 **교체 커밋이 있는 브랜치에서 새 Run workflow**를 실행한다.
+
 ### TS6305 수정과 빌드 순서
 
 `api-client-react`는 composite/emitDeclarationOnly 프로젝트이고 React 앱은 이를 참조한다.
@@ -26,8 +39,10 @@ README는 루트 기존 파일을 교체한다. 숨김 `.github` 폴더를 빠�
 검사를 생략하지 않고, 다음 순서로 해결한다.
 
 1. 잠금 파일 기준 의존성 설치(기존 Node/Python/VS 준비 설정 유지).
-2. `pnpm exec tsc --build lib/api-client-react lib/api-zod --force --verbose`
-   — 운영 DB 패키지는 빌드하지 않는다.
+2. `node scripts/build-desktop-declarations.cjs`
+   — 설치된 TypeScript CLI를 Node로 직접 실행하여 두 라이브러리를
+   `--build --force --verbose`로 선언 파일 빌드한다. 패키지 `build` 스크립트와
+   운영 DB 패키지는 호출하지 않는다. tsconfig와 생성된 `dist/index.d.ts`를 검사한다.
 3. React `typecheck`, 로컬/모의 장비 테스트.
 4. Electron 데스크톱 번들 → 별도 런타임 스테이징 → Windows x64 네이티브 재빌드
    (`npmRebuild:true`, `buildDependenciesFromSource:true`) → NSIS EXE.
@@ -46,7 +61,7 @@ React 검사를 선행한다. 실패 시 Actions Summary에 실패 단계와 수
 - 수정 전 `AdminPasswordPanel.tsx`, `DesktopStatusStrip.tsx`, `order-deletion.ts`에서
   TS6305 세 건을 재현했다.
 - 위 내부 라이브러리 빌드 후 React 타입 검사 종료 코드 0을 확인했다.
-- 설치 빌더 설정·순서·아이콘·바로가기·데이터 보존 정적 검사 8개를 통과했다.
+- 설치 빌더 설정·순서·아이콘·바로가기·데이터 보존 정적 검사 9개를 통과했다.
 - Windows x64 패키징, Electron SQLite ABI 실행, NSIS EXE 생성 및 크기·해시,
   Windows 11 실제 설치와 장비는 여기서 검증하지 않았다.
   이후 GitHub 실행이 성공하여 실제 산출물이 생긴 경우에만 EXE 생성 성공으로 판단한다.
