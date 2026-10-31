@@ -1,5 +1,56 @@
 # K99 Windows EXE 자동 제작 — 비공개 저장소 전용
 
+## 이번 수정본 업로드: 기존 4개 파일 교체
+
+다운로드 ZIP 자체를 GitHub에 올리지 말고 압축을 풀어 **아래 네 경로의 파일을 같은 경로에 덮어쓴다**.
+다른 프로젝트나 저장소에는 업로드하지 않는다. 이미 있는 `.gitignore`는 유지해도 된다.
+
+1. `.github/workflows/windows-installer.yml`
+2. `source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip`
+3. `source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip.sha256`
+4. `README.md`
+
+GitHub 웹 화면에서 workflow는 기존 파일의 편집 버튼으로 교체하고,
+source 폴더의 ZIP/sha256은 **Add file → Upload files**에서 함께 교체한다.
+README는 루트 기존 파일을 교체한다. 숨김 `.github` 폴더를 빠뜨리지 않는다.
+4개 모두 커밋한 뒤 Actions → Build K99 Windows Installer → Run workflow를
+한 번 실행한다. 현재 브랜치를 선택하고 사용량·비용 확인란을 체크한다.
+실제 저장소의 기존 4개 파일 경로는 이 환경에서 조회하지 않았으므로,
+경로가 다르면 기존 파일명을 임의로 바꾸지 말고 위 경로를 기준으로 배치한다.
+
+### TS6305 수정과 빌드 순서
+
+`api-client-react`는 composite/emitDeclarationOnly 프로젝트이고 React 앱은 이를 참조한다.
+`tsc -p ... --noEmit`은 참조 라이브러리를 자동 빌드하지 않으므로 깨끗한 checkout에서
+`dist/index.d.ts`가 없으면 TS6305가 발생한다. React 기능 파일을 변경하거나
+검사를 생략하지 않고, 다음 순서로 해결한다.
+
+1. 잠금 파일 기준 의존성 설치(기존 Node/Python/VS 준비 설정 유지).
+2. `pnpm exec tsc --build lib/api-client-react lib/api-zod --force --verbose`
+   — 운영 DB 패키지는 빌드하지 않는다.
+3. React `typecheck`, 로컬/모의 장비 테스트.
+4. Electron 데스크톱 번들 → 별도 런타임 스테이징 → Windows x64 네이티브 재빌드
+   (`npmRebuild:true`, `buildDependenciesFromSource:true`) → NSIS EXE.
+5. 패키징된 better-sqlite3를 Electron Node 모드에서 로드하여 ABI 검사.
+6. EXE 크기·PE 형식·SHA-256 검증 후에만 결과 Artifact 업로드.
+
+직접 Windows에서 `desktop:dist`를 실행하는 경우에도 내부 라이브러리 빌드와
+React 검사를 선행한다. 실패 시 Actions Summary에 실패 단계와 수정 대상이 표시되고,
+패키징 단계별 로그 및 생성된 builder 진단 파일은 별도 실패 Artifact로 보관된다.
+원래 TypeScript 오류의 파일·행·오류 코드는 해당 실패 단계 전체 로그에서 확인한다.
+
+### 이번 수정의 실제 검증 범위
+
+- Linux 임시 소스 사본에서 기존 선언 파일 및 빌드 캐시 없이 검사했다.
+  의존성 패키지는 이미 설치된 로컬 패키지를 재사용했으며 Windows 신규 설치 검증은 아니다.
+- 수정 전 `AdminPasswordPanel.tsx`, `DesktopStatusStrip.tsx`, `order-deletion.ts`에서
+  TS6305 세 건을 재현했다.
+- 위 내부 라이브러리 빌드 후 React 타입 검사 종료 코드 0을 확인했다.
+- 설치 빌더 설정·순서·아이콘·바로가기·데이터 보존 정적 검사 8개를 통과했다.
+- Windows x64 패키징, Electron SQLite ABI 실행, NSIS EXE 생성 및 크기·해시,
+  Windows 11 실제 설치와 장비는 여기서 검증하지 않았다.
+  이후 GitHub 실행이 성공하여 실제 산출물이 생긴 경우에만 EXE 생성 성공으로 판단한다.
+
 ## 현재 사실
 
 이 문서와 workflow는 **자동 빌드 준비 파일**이다. 실제 GitHub 저장소 생성·업로드·Windows 빌드·EXE 확보 여부는 각각 별도로 보고한다.
@@ -28,7 +79,6 @@ workflow가 존재하거나 Linux 검사에 통과했다는 이유만으로 EXE 
 source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip
 source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip.sha256
 README.md
-.gitignore
 ```
 
 소스 ZIP의 SHA-256을 검사한 뒤 Windows 2022 hosted runner에서 압축을 푼다.
