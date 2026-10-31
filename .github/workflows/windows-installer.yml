@@ -1,0 +1,99 @@
+name: Build K99 Windows Installer
+
+# Uploading sources never starts a billed Windows job. Manual approval only.
+on:
+  workflow_dispatch:
+    inputs:
+      usage_approved:
+        description: "무료 잔여 사용량·저장 용량 또는 승인된 비용을 확인했으며 이번 빌드 실행을 승인합니다."
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: k99-windows-installer
+  cancel-in-progress: false
+
+jobs:
+  windows-installer:
+    if: ${{ inputs.usage_approved && github.event.repository.private == true }}
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - name: Checkout private build repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Check source ZIP checksum and extract
+        shell: pwsh
+        run: |
+          $zip = "source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip"
+          $expected = ((Get-Content "$zip.sha256").Trim() -split '\s+')[0]
+          $actual = (Get-FileHash $zip -Algorithm SHA256).Hash
+          if ($actual -ine $expected) { throw "Source ZIP checksum mismatch" }
+          Expand-Archive -Path $zip -DestinationPath build
+      - name: Prepare pnpm 10.26.1
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.26.1
+          run_install: false
+      - name: Prepare Node.js 24 x64
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+          architecture: x64
+      - name: Prepare Python 3.12 x64
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+      - name: Validate hosted C++ tools and Windows SDK
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path $vswhere)) { throw "VS2022 Build Tools discovery unavailable" }
+          $vs = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vs) { throw "MSVC v143 missing from Windows hosted image" }
+          $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvars64.bat"
+          if (!(Test-Path $vcvars)) { throw "C++ x64 toolchain missing" }
+          if (!(Test-Path "${env:ProgramFiles(x86)}\Windows Kits\10\Include")) { throw "Windows SDK missing" }
+          "npm_config_python=$((Get-Command python).Source)" >> $env:GITHUB_ENV
+          "npm_config_msvs_version=2022" >> $env:GITHUB_ENV
+          node --version
+          pnpm --version
+          python --version
+      - name: Install exact source dependencies
+        working-directory: build
+        run: pnpm install --frozen-lockfile
+      - name: Check React source types
+        working-directory: build
+        run: pnpm --filter @workspace/k99-windows run typecheck
+      - name: Test local storage and mocked equipment without any live service
+        working-directory: build
+        run: node --test lib/k99-local/storage.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs
+      - name: Build Windows x64 NSIS EXE
+        working-directory: build
+        run: pnpm --filter @workspace/k99-windows run desktop:dist
+      - name: Verify x64 payload and packaged SQLite Electron ABI
+        working-directory: build
+        run: node scripts/verify-packaged-native.cjs
+      - name: Measure actual installer bytes and SHA-256
+        working-directory: build
+        run: node scripts/verify-windows-installer.cjs
+      - name: Upload verified EXE and evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: K99-Windows-V1-0.3.0-x64
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/generated-artifacts/windows-installer/K99-Windows-V1-Setup-0.3.0-x64.exe
+            build/generated-artifacts/windows-installer/K99-Windows-V1-Setup-0.3.0-x64.exe.sha256
+            build/generated-artifacts/windows-installer/build-manifest.json
+            build/generated-artifacts/windows-installer/electron-abi-result.json
