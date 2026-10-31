@@ -73,7 +73,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Check React source types
         working-directory: build
-        run: pnpm --filter @workspace/k99-windows run typecheck
+        run: |
+            pnpm --filter @workspace/api-client-react run build
+            pnpm --filter @workspace/k99-windows run typecheck
       - name: Test local storage and mocked equipment without any live service
         working-directory: build
         run: node --test lib/k99-local/storage.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs
