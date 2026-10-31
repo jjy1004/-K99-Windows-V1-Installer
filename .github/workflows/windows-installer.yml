@@ -37,6 +37,7 @@ jobs:
           $expected = ((Get-Content "$zip.sha256").Trim() -split '\s+')[0]
           $actual = (Get-FileHash $zip -Algorithm SHA256).Hash
           if ($actual -ine $expected) { throw "Source ZIP checksum mismatch" }
+          Write-Output "K99 DIRECT-TSC DECLARATIONS v1; workflow commit=$env:GITHUB_SHA; source SHA256=$actual"
           Expand-Archive -Path $zip -DestinationPath build
       - name: Prepare pnpm 10.26.1
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -69,23 +70,33 @@ jobs:
           pnpm --version
           python --version
       - name: Install exact source dependencies
+        id: dependencies
         working-directory: build
         run: pnpm install --frozen-lockfile
+      - name: Build and verify declarations directly with TypeScript (no package build script)
+        id: libraries
+        working-directory: build
+        run: node scripts/build-desktop-declarations.cjs
       - name: Check React source types
+        id: react_types
         working-directory: build
         run: |
-            pnpm --filter @workspace/api-client-react run build
-            pnpm --filter @workspace/k99-windows run typecheck
+          node scripts/build-desktop-declarations.cjs --verify-only
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm --filter @workspace/k99-windows run typecheck
       - name: Test local storage and mocked equipment without any live service
         working-directory: build
         run: node --test lib/k99-local/storage.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs
       - name: Build Windows x64 NSIS EXE
+        id: packaging
         working-directory: build
         run: pnpm --filter @workspace/k99-windows run desktop:dist
       - name: Verify x64 payload and packaged SQLite Electron ABI
+        id: native_abi
         working-directory: build
         run: node scripts/verify-packaged-native.cjs
       - name: Measure actual installer bytes and SHA-256
+        id: installer_hash
         working-directory: build
         run: node scripts/verify-windows-installer.cjs
       - name: Upload verified EXE and evidence
@@ -99,3 +110,41 @@ jobs:
             build/generated-artifacts/windows-installer/K99-Windows-V1-Setup-0.3.0-x64.exe.sha256
             build/generated-artifacts/windows-installer/build-manifest.json
             build/generated-artifacts/windows-installer/electron-abi-result.json
+      - name: Explain failed stage and repair target
+        if: failure()
+        shell: pwsh
+        env:
+          DEPENDENCIES: ${{ steps.dependencies.outcome }}
+          LIBRARIES: ${{ steps.libraries.outcome }}
+          REACT_TYPES: ${{ steps.react_types.outcome }}
+          PACKAGING: ${{ steps.packaging.outcome }}
+          NATIVE_ABI: ${{ steps.native_abi.outcome }}
+          INSTALLER_HASH: ${{ steps.installer_hash.outcome }}
+        run: |
+          $checks = @(
+            @("dependencies", $env:DEPENDENCIES, "pnpm-lock.yaml / dependency installation"),
+            @("libraries", $env:LIBRARIES, "scripts/build-desktop-declarations.cjs; lib/api-client-react/tsconfig.json, lib/api-zod/tsconfig.json; emitted dist/*.d.ts"),
+            @("react_types", $env:REACT_TYPES, "artifacts/k99-windows/tsconfig.json and file:line in TypeScript log"),
+            @("packaging", $env:PACKAGING, "scripts/build-windows-installer.cjs stage markers; electron-builder.cjs / installer/data-preservation.nsh"),
+            @("native_abi", $env:NATIVE_ABI, "scripts/verify-packaged-native.cjs / packaged better-sqlite3.node"),
+            @("installer_hash", $env:INSTALLER_HASH, "scripts/verify-windows-installer.cjs / EXE and manifest")
+          )
+          "## K99 installer failure diagnosis" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($check in $checks) {
+            "- $($check[0]): $($check[1]); inspect $($check[2])" >> $env:GITHUB_STEP_SUMMARY
+            if ($check[1] -eq "failure") {
+              Write-Output "::error title=K99 $($check[0]) failed::Inspect $($check[2]); original compiler/builder error is in this step's full log."
+            }
+          }
+          "If all stages above were skipped, inspect checkout, ZIP checksum and existing tool preparation steps." >> $env:GITHUB_STEP_SUMMARY
+      - name: Preserve builder diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: K99-builder-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            build/generated-artifacts/windows-installer/builder-debug.yml
+            build/generated-artifacts/windows-installer/builder-effective-config.yaml
+            build/generated-artifacts/windows-installer/packaging-stages.log
