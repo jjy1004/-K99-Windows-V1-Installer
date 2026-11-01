@@ -163,4 +163,3 @@ jobs:
             build/generated-artifacts/windows-installer/packaging-console.log
             build/generated-artifacts/nsis-customization-check/*.log
             build/generated-artifacts/nsis-customization-check/report.json
-
