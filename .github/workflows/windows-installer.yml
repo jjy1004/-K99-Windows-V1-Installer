@@ -25,8 +25,9 @@ jobs:
 
       - name: Extract Build Kit
         run: |
-          New-Item -ItemType Directory -Force -Path "build"
-          tar -xf source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip -C build/
+          tar -xf source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip -C .
+          New-Item -ItemType Directory -Force -Path "build/artifacts/k99-windows/installer"
+          Copy-Item -Recurse -Force "artifacts/k99-windows/*" "build/artifacts/k99-windows/"
 
       - name: Install exact source dependencies
         run: |
@@ -47,10 +48,6 @@ jobs:
       - name: Compile installer and uninstaller customizations with NSIS
         run: |
           node scripts/stage-windows-app.cjs
-          if (!(Test-Path "build/artifacts/k99-windows/installer/data-preservation.nsh")) {
-            New-Item -ItemType Directory -Force -Path "build/artifacts/k99-windows/installer"
-            Copy-Item -Recurse -Force "artifacts/k99-windows/installer/*" "build/artifacts/k99-windows/installer/"
-          }
           node scripts/verify-nsis-customization.cjs
 
       - name: Build Windows x64 NSIS EXE
