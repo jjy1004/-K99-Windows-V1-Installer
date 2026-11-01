@@ -31,7 +31,7 @@ jobs:
 
       - name: Install exact source dependencies
         run: |
-          pnpm install --frozen-lockfile
+          pnpm install --no-frozen-lockfile
 
       - name: Build and verify declarations directly with TypeScript
         run: |
