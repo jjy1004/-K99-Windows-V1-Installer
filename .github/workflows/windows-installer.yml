@@ -38,18 +38,9 @@ jobs:
         run: |
           Expand-Archive -Path "source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip" -DestinationPath "." -Force
           
-          # 경로 불일치를 방지하기 위해 installer 및 artifacts 폴더를 모든 타깃 경로에 선제 복사
-          New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/installer"
-          New-Item -ItemType Directory -Force -Path "build/artifacts/k99-windows/installer"
-          
-          Get-ChildItem -Recurse -Filter "data-preservation.nsh" | ForEach-Object {
-            Copy-Item -Force $_.FullName "artifacts/k99-windows/installer/"
-            Copy-Item -Force $_.FullName "build/artifacts/k99-windows/installer/"
-          }
-          
-          if (Test-Path "artifacts/k99-windows/installer/k99-reception.ico") {
-            Copy-Item -Force "artifacts/k99-windows/installer/*" "build/artifacts/k99-windows/installer/"
-          }
+          # build 경로를 요구하는 스크립트를 위해 artifacts 폴더 전체를 build/ 하위로 안전 동기화
+          New-Item -ItemType Directory -Force -Path "build/artifacts"
+          Copy-Item -Recurse -Force "artifacts/*" "build/artifacts/"
 
       - name: Install exact source dependencies
         run: |
