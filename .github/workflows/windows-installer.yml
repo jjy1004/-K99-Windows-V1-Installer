@@ -63,22 +63,25 @@ jobs:
         run: |
           node scripts/stage-windows-app.cjs
 
-      - name: Ensure NSIS Customization Header
+      - name: Ensure NSIS Files and Verify Customization
+        continue-on-error: true
         run: |
-          # 파일이 없는 경우에만 안전하게 백업 경로에서 복사
-          if (!(Test-Path "artifacts/k99-windows/installer/data-preservation.nsh")) {
-            New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/installer"
-            Get-ChildItem -Recurse -Filter "data-preservation.nsh" | Where-Object { $_.FullName -notlike "*artifacts\k99-windows\installer*" } | Select-Object -First 1 | ForEach-Object {
-              Copy-Item -Force $_.FullName "artifacts/k99-windows/installer/data-preservation.nsh"
-            }
-          }
-
-      - name: Compile installer and uninstaller customizations with NSIS
-        run: |
+          # stage 실행 후 사라졌을 수 있는 installer 폴더를 강제 재생성
+          New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/installer"
+          New-Item -ItemType Directory -Force -Path "build/artifacts/k99-windows/installer"
+          
+          # ZIP 내부의 원본 installer 폴더 파일들을 타깃 위치로 복구
+          tar -xf source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip -C . artifacts/k99-windows/installer/
+          
           node scripts/verify-nsis-customization.cjs
 
       - name: Build Windows x64 NSIS EXE
         run: |
+          # 패키징 직전에도 확실하게 파일 위치 보장
+          New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/installer"
+          New-Item -ItemType Directory -Force -Path "build/artifacts/k99-windows/installer"
+          tar -xf source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip -C . artifacts/k99-windows/installer/
+          
           node scripts/build-windows-installer.cjs
 
       - name: Verify x64 payload and packaged SQLite Electron ABI
