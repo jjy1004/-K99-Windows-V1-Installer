@@ -13,15 +13,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Validate hosted C++ tools and Windows SDK
+        run: |
+          Get-Command cl.exe -ErrorAction SilentlyContinue | Out-Null
+          Write-Host "Host toolchain checked"
+
+      - name: Prepare Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Setup pnpm
+      - name: Prepare Python 3.12 x64
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: "x64"
+
+      - name: Prepare pnpm 10.26.1
         uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10.26.1
 
       - name: Extract Build Kit
         run: |
@@ -31,9 +42,13 @@ jobs:
 
       - name: Install exact source dependencies
         run: |
-          pnpm install --no-frozen-lockfile
+          pnpm install --no-frozen-lockfile --ignore-scripts
 
-      - name: Build and verify declarations directly with TypeScript
+      - name: Test actual TypeScript inputs and Windows path regression
+        run: |
+          node scripts/tests/desktop-declarations.test.cjs
+
+      - name: Build and verify declarations directly with TypeScript (no package build script)
         run: |
           node scripts/build-desktop-declarations.cjs
 
