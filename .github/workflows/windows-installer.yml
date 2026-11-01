@@ -37,7 +37,7 @@ jobs:
           $expected = ((Get-Content "$zip.sha256").Trim() -split '\s+')[0]
           $actual = (Get-FileHash $zip -Algorithm SHA256).Hash
           if ($actual -ine $expected) { throw "Source ZIP checksum mismatch" }
-          Write-Output "K99 DIRECT-TSC DECLARATIONS v1; workflow commit=$env:GITHUB_SHA; source SHA256=$actual"
+          Write-Output "K99 DIRECT-TSC WINDOWS-PATH-FIX; workflow commit=$env:GITHUB_SHA; source SHA256=$actual"
           Expand-Archive -Path $zip -DestinationPath build
       - name: Prepare pnpm 10.26.1
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -73,6 +73,10 @@ jobs:
         id: dependencies
         working-directory: build
         run: pnpm install --frozen-lockfile
+      - name: Test actual TypeScript inputs and Windows path regression
+        id: declaration_tests
+        working-directory: build
+        run: node --test scripts/tests/desktop-declarations.test.cjs
       - name: Build and verify declarations directly with TypeScript (no package build script)
         id: libraries
         working-directory: build
@@ -86,7 +90,11 @@ jobs:
           pnpm --filter @workspace/k99-windows run typecheck
       - name: Test local storage and mocked equipment without any live service
         working-directory: build
-        run: node --test lib/k99-local/storage.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs
+        run: node --test lib/k99-local/storage.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs scripts/tests/installer-command.test.cjs
+      - name: Compile installer and uninstaller customizations with NSIS
+        id: nsis_customization
+        working-directory: build
+        run: node scripts/verify-nsis-customization.cjs
       - name: Build Windows x64 NSIS EXE
         id: packaging
         working-directory: build
@@ -115,17 +123,21 @@ jobs:
         shell: pwsh
         env:
           DEPENDENCIES: ${{ steps.dependencies.outcome }}
+          DECLARATION_TESTS: ${{ steps.declaration_tests.outcome }}
           LIBRARIES: ${{ steps.libraries.outcome }}
           REACT_TYPES: ${{ steps.react_types.outcome }}
           PACKAGING: ${{ steps.packaging.outcome }}
+          NSIS_CUSTOMIZATION: ${{ steps.nsis_customization.outcome }}
           NATIVE_ABI: ${{ steps.native_abi.outcome }}
           INSTALLER_HASH: ${{ steps.installer_hash.outcome }}
         run: |
           $checks = @(
             @("dependencies", $env:DEPENDENCIES, "pnpm-lock.yaml / dependency installation"),
+            @("declaration_tests", $env:DECLARATION_TESTS, "scripts/tests/desktop-declarations.test.cjs / Windows input canonicalization"),
             @("libraries", $env:LIBRARIES, "scripts/build-desktop-declarations.cjs; lib/api-client-react/tsconfig.json, lib/api-zod/tsconfig.json; emitted dist/*.d.ts"),
             @("react_types", $env:REACT_TYPES, "artifacts/k99-windows/tsconfig.json and file:line in TypeScript log"),
             @("packaging", $env:PACKAGING, "scripts/build-windows-installer.cjs stage markers; electron-builder.cjs / installer/data-preservation.nsh"),
+            @("nsis_customization", $env:NSIS_CUSTOMIZATION, "installer/data-preservation.nsh / generated-artifacts/nsis-customization-check logs"),
             @("native_abi", $env:NATIVE_ABI, "scripts/verify-packaged-native.cjs / packaged better-sqlite3.node"),
             @("installer_hash", $env:INSTALLER_HASH, "scripts/verify-windows-installer.cjs / EXE and manifest")
           )
@@ -148,3 +160,6 @@ jobs:
             build/generated-artifacts/windows-installer/builder-debug.yml
             build/generated-artifacts/windows-installer/builder-effective-config.yaml
             build/generated-artifacts/windows-installer/packaging-stages.log
+            build/generated-artifacts/windows-installer/packaging-console.log
+            build/generated-artifacts/nsis-customization-check/*.log
+            build/generated-artifacts/nsis-customization-check/report.json
