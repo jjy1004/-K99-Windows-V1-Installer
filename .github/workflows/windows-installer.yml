@@ -36,7 +36,13 @@ jobs:
 
       - name: Extract Build Kit
         run: |
-          tar -xf source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip -C .
+          Expand-Archive -Path "source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip" -DestinationPath "." -Force
+          New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/installer"
+          New-Item -ItemType Directory -Force -Path "build/artifacts/k99-windows/installer"
+          Get-ChildItem -Recurse -Filter "data-preservation.nsh" | ForEach-Object {
+            Copy-Item -Force $_.FullName "artifacts/k99-windows/installer/"
+            Copy-Item -Force $_.FullName "build/artifacts/k99-windows/installer/"
+          }
 
       - name: Install exact source dependencies
         run: |
@@ -51,9 +57,9 @@ jobs:
           PORT: 5000
           NODE_ENV: production
         run: |
-          cd artifacts/k99-windows
+          Set-Location artifacts/k99-windows
           npx vite build --config vite.desktop.config.ts --outDir dist/desktop
-          cd ../..
+          Set-Location ../..
           node scripts/stage-windows-app.cjs
 
       - name: Compile installer and uninstaller customizations with NSIS
