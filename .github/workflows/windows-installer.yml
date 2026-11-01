@@ -37,8 +37,12 @@ jobs:
       - name: Extract Build Kit
         run: |
           tar -xf source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip -C .
+          New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/installer"
           New-Item -ItemType Directory -Force -Path "build/artifacts/k99-windows/installer"
-          Copy-Item -Recurse -Force "artifacts/k99-windows/*" "build/artifacts/k99-windows/"
+          if (Test-Path "installer/data-preservation.nsh") {
+            Copy-Item -Force "installer/data-preservation.nsh" "artifacts/k99-windows/installer/"
+            Copy-Item -Force "installer/data-preservation.nsh" "build/artifacts/k99-windows/installer/"
+          }
 
       - name: Install exact source dependencies
         run: |
@@ -56,10 +60,9 @@ jobs:
         run: |
           pnpm --filter @k99/windows typecheck
 
-      - name: Test local storage and mocked equipment without live service
-        continue-on-error: true
+      - name: Build Desktop Frontend Bundle
         run: |
-          pnpm test
+          pnpm --filter @k99/windows desktop:build
 
       - name: Compile installer and uninstaller customizations with NSIS
         run: |
