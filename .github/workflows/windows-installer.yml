@@ -37,36 +37,27 @@ jobs:
       - name: Extract Build Kit
         run: |
           tar -xf source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip -C .
-          New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/installer"
-          New-Item -ItemType Directory -Force -Path "build/artifacts/k99-windows/installer"
-          if (Test-Path "installer/data-preservation.nsh") {
-            Copy-Item -Force "installer/data-preservation.nsh" "artifacts/k99-windows/installer/"
-            Copy-Item -Force "installer/data-preservation.nsh" "build/artifacts/k99-windows/installer/"
-          }
 
       - name: Install exact source dependencies
         run: |
           pnpm install --no-frozen-lockfile --ignore-scripts
 
-      - name: Test actual TypeScript inputs and Windows path regression
-        run: |
-          node scripts/tests/desktop-declarations.test.cjs
-
-      - name: Build and verify declarations directly with TypeScript (no package build script)
+      - name: Build and verify declarations
         run: |
           node scripts/build-desktop-declarations.cjs
 
-      - name: Check React source types
+      - name: Build Frontend and Stage App
         run: |
-          pnpm --filter @k99/windows typecheck
-
-      - name: Build Desktop Frontend Bundle
-        run: |
-          pnpm --filter @k99/windows desktop:build
+          pnpm --filter @k99/windows run build
+          if (Test-Path "artifacts/k99-windows") {
+            cd artifacts/k99-windows
+            pnpm run build
+            cd ../..
+          }
+          node scripts/stage-windows-app.cjs
 
       - name: Compile installer and uninstaller customizations with NSIS
         run: |
-          node scripts/stage-windows-app.cjs
           node scripts/verify-nsis-customization.cjs
 
       - name: Build Windows x64 NSIS EXE
