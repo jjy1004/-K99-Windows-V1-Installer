@@ -46,14 +46,14 @@ jobs:
         run: |
           node scripts/build-desktop-declarations.cjs
 
-      - name: Build Frontend and Stage App
+      - name: Build Desktop Frontend Bundle
+        env:
+          PORT: 5000
+          NODE_ENV: production
         run: |
-          pnpm --filter @k99/windows run build
-          if (Test-Path "artifacts/k99-windows") {
-            cd artifacts/k99-windows
-            pnpm run build
-            cd ../..
-          }
+          cd artifacts/k99-windows
+          npx vite build --config vite.desktop.config.ts --outDir dist/desktop
+          cd ../..
           node scripts/stage-windows-app.cjs
 
       - name: Compile installer and uninstaller customizations with NSIS
