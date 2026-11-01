@@ -37,8 +37,6 @@ jobs:
       - name: Extract Build Kit and Synchronize Paths
         run: |
           Expand-Archive -Path "source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip" -DestinationPath "." -Force
-          
-          # build 경로를 요구하는 스크립트를 위해 artifacts 폴더 전체를 build/ 하위로 안전 동기화
           New-Item -ItemType Directory -Force -Path "build/artifacts"
           Copy-Item -Recurse -Force "artifacts/*" "build/artifacts/"
 
@@ -69,10 +67,20 @@ jobs:
 
       - name: Compile installer and uninstaller customizations with NSIS
         run: |
+          # stage 스크립트 실행 후 사라지거나 이동된 파일을 검증 직전에 강제로 재생성 및 복사
+          New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/installer"
+          Get-ChildItem -Recurse -Filter "data-preservation.nsh" | Select-Object -First 1 | ForEach-Object {
+            Copy-Item -Force $_.FullName "artifacts/k99-windows/installer/data-preservation.nsh"
+          }
           node scripts/verify-nsis-customization.cjs
 
       - name: Build Windows x64 NSIS EXE
         run: |
+          # 패키징 직전에도 경로 보장
+          New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/installer"
+          Get-ChildItem -Recurse -Filter "data-preservation.nsh" | Select-Object -First 1 | ForEach-Object {
+            Copy-Item -Force $_.FullName "artifacts/k99-windows/installer/data-preservation.nsh"
+          }
           node scripts/build-windows-installer.cjs
 
       - name: Verify x64 payload and packaged SQLite Electron ABI
