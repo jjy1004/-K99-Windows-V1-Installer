@@ -59,13 +59,20 @@ jobs:
           npx vite build --config vite.desktop.config.ts --outDir dist/desktop
           Set-Location ../..
       - name: Auto Generate Video Assets
+        shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "artifacts/k99-windows/media/videos"
-          $b = New-Object byte[] 1048576
-          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/value.mp4", $b)
-          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/process.mp4", $b)
-          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/water.mp4", $b)
-          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/sneakers.mp4", $b)
+          $mp4 = [byte[]]@(
+            0x00,0x00,0x00,0x18,0x66,0x74,0x79,0x70,0x69,0x73,0x6F,0x6D,0x00,0x00,0x02,0x00,0x69,0x73,0x6F,0x6D,0x69,0x73,0x6F,0x32,
+            0x00,0x00,0x00,0x08,0x66,0x72,0x65,0x65,
+            0x00,0x00,0x00,0x10,0x6D,0x64,0x61,0x74,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+            0x00,0x00,0x00,0x08,0x6D,0x6F,0x6F,0x76
+          )
+          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/value.mp4", $mp4)
+          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/process.mp4", $mp4)
+          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/water.mp4", $mp4)
+          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/sneakers.mp4", $mp4)
+
 
       - name: Build Windows x64 NSIS EXE
         env:
