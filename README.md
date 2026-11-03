@@ -1,19 +1,8 @@
-## 최신 수정: 안내 영상 1회 재생 / 대기 영상 무한 반복
-
-- process/value/water/sneakers: loop 없음, onEnded 또는 닫기로 대기 루프 복귀.
-- 대기 promo/value: 자동·음소거·무한 반복. 대기/안내 플레이어 DOM 분리.
-- TypeScript 검사, desktop:build, 자동 테스트 25개 통과. 실제 Windows EXE 및 장비 재검증은 미수행.
-- 기존 비공개 GitHub 저장소에 동일 경로로 덮어쓰기. source 내부 ZIP은 압축을 풀지 않습니다.
-- 기존 원본 영상 분할 파일은 변경하지 않았으며 이 소스 ZIP에 포함하지 않았습니다. 저장소의 기존 영상 파일을 유지하세요.
-- 운영 DB, 고객 사진, 비밀키, node_modules, EXE는 포함하지 않습니다.
-
----
-
 # 최신 통합 수정: 출고·한글 자동 조합·18초 대기 영상
 
 이번 소스는 출고 카드의 출고 버튼 또는 하단 단일 검색창 Enter로 출고합니다. 단순 조회/입력 중에는 출고하지 않으며 중복 조회는 직원이 주문을 선택합니다.
 고객명과 이름 검색은 영문 키를 두벌식 한글로 자동 조합합니다. 전화번호/주문번호/바코드는 보호하며 네이티브 한글 조합 중 Enter는 출고하지 않습니다.
-고객 화면 대기 시 18.018초 기존 원본 영상을 `promo.mp4`로 무한 반복합니다. 안내 4종 종료/닫기 후 대기 영상으로 복귀하고, 새 접수 품목이 표시되면 영수증으로 전환합니다.
+고객 화면 최초 대기 시 18.018초 기존 원본 영상을 `promo.mp4`로 무한 반복합니다. 안내 4종은 1회 재생하며 종료/닫기 후 영상을 완전히 해제하고 반드시 접수·가격 확인 영수증으로 전환합니다. 품목이 없어도 대기 루프로 돌아가지 않습니다.
 기존 영상 업로드 묶음은 그대로 사용합니다. 별도 promo로 교체하려면 빌드 소스의 `artifacts/k99-windows/media/videos/promo.mp4`에 배치합니다.
 로컬 영상 교체 시 과거 manifest 해시 불일치는 차단 대신 경고/재계산합니다. 다운로드 조각 무결성·허용 경로·MP4 헤더 검사는 유지합니다.
 이 ZIP은 Windows EXE가 아니라 기존 비공개 저장소에 교체할 빌드 소스입니다. 실제 Windows 설치/스캐너/IME는 현장 검증이 필요합니다.
@@ -130,6 +119,88 @@ GitHub Windows 빌드, 실제 NSIS 설치, TSC 실물 인쇄, USB 발판과 스�
 8. 네 영상의 첫 프레임·소리·마지막까지 재생·닫기·실시간 접수 화면 복귀.
 9. 총액 수정·추가 기술료 동의·미동의·대시보드 금액·공정 이동 및 전후 사진.
 10. 외부 백업 매체에서 복구하고 주문·사진·태그·설정 및 D 폴더 사본까지 확인.
+
+
+---
+
+# 최신 고객 화면 정책 — 안내 종료 후 반드시 영수증 표시
+
+이 절은 아래 과거 기록의 “안내 종료 후 대기 루프 복귀”를 대체한다.
+
+- 상태를 `IDLE`, `GUIDE_VIDEO`, `RECEIPT`로 분리했다. 최초 빈 대기에서만 promo/value를 무한 반복한다.
+- 안내 4종은 `loop={false}`로 1회 재생한다. 자연 종료/닫기 시 먼저 ended 상태를 IPC로 전송하고, 플레이어를 정지하고 src를 제거·load한 후 안내 DOM을 언마운트하여 영수증을 표시한다.
+- 품목이 없거나 접수 스냅샷이 늦게 도착해도 영수증 상태는 유지한다. 데이터 수신 전에는 0건·0원 영수증을 표시하며 고객/품목 데이터 도착 시 현재 내용으로 갱신한다. source 변경 때문에 미디어 상태를 다시 초기화하지 않는다.
+- 변경 파일: `src/customer-media.ts`, `src/CustomerMedia.tsx`, `src/App.tsx`, `tests/customer-playback-policy.test.ts`, `scripts/verify-native-customer-browser.cjs`.
+- 검증: TypeScript 업무/입력/영상 정책 테스트 26개, React 타입 검사, Vite desktop:build 통과. Chromium 집중 검사 `node scripts/verify-native-customer-browser.cjs --media-only`에서 11개 항목 통과(최초 대기 루프, 네 원본 영상 첫 프레임·종료·닫기, DOM 제거/소스 해제, 빈 스냅샷 후 영수증 유지). SQLite는 OS 임시 저장소를 사용하며 Electron IPC/화면은 모의이다.
+- Windows EXE 생성·실제 설치·물리 모니터 검증은 이번 수정에서 수행하지 않았다. 기존 번들 크기 경고는 남아 있으며 별도 lint 통과를 주장하지 않는다. 기존 DB·사진·가격·영상 바이트·설치 설정은 변경하지 않는다.
+
+---
+
+# 이전 통합 수정 — 출고 · 한글 오토마타 · 대기 홍보 루프
+
+검증 결과: TypeScript 업무 테스트 23개와 CJS 테스트 79개(합계 102개), React 타입 검사, Vite 데스크톱 빌드, 스테이징을 통과했다. 브라우저에서는 대기 루프·안내 4종·실시간 한글·검수·실제 Enter 인도 저장 등 13개 항목을 통과했다. 확장된 중복 주문 브라우저 검사는 복제 테스트 자료의 주문/의류 소유권 연결 오류로 중단되었으며, 테스트 자료를 정정했으나 그 확장 시나리오는 재검증하지 않았다. 중복 후보 분기 자체는 코드에 구현되어 있지만 브라우저 검증 완료로 보고하지 않는다. Windows EXE 생성/설치·실물 장비·실제 Windows IME는 미검증이다. 별도 ESLint 설정/스크립트가 없어 lint 통과는 주장하지 않는다. 기존 번들 크기 경고가 남아 있다.
+
+- 출고: 상단 출고 대기 카드 그리드(주문번호·고객명·수량·품목·출고 버튼)와 하단 단일 검색창. 고유 대기 주문은 Enter/스캐너 종료 입력으로 즉시 직원 인도 확정한다. 입력 중 대기는 조회만 하며 포커스를 빼앗지 않는다. 동명이인/연락처 중복은 선택 전 출고하지 않는다. 미완료·취소·보류 차단과 SQLite 동기 저장은 유지한다.
+- 한글: 제공된 `src/utils/koreanAutomata.ts`를 포함한다. 실제 입력 어댑터 `src/korean-input-conversion.ts`에서 완성 음절 재조합·겹받침 이동·독립 모음 조합을 보완한다. 고객명, 접수 재개/관리 검색과 출고 검색에 연결했으며 네이티브 IME 조합 중에는 변환/Enter 출고를 하지 않는다. 두벌식 `rn`은 `구`, `kp`는 `ㅏㅔ`이다. 새 라이브러리는 없다. 영문 이름도 한글 우선 입력으로 변환되므로 외국어 고객명 입력은 별도 영문 입력 선택 기능을 추가 검토할 수 있다.
+- 영상: 별도 원본 promo가 없어 기존 `value.mp4`(18.018초)를 원본 그대로 `resources/videos/promo.mp4`로 스테이징한다. 개발 환경은 같은 원본으로 fallback한다. 로컬 `artifacts/k99-windows/media/videos/promo.mp4`가 있으면 이를 우선 복사한다. 최초 대기 영상은 loop/muted/autoPlay/playsInline이며 종료 핸들러가 없다. 안내 4종 종료/닫기 후에는 최신 정책에 따라 영수증으로 전환한다. 안내 닫기도 IPC ended 상태를 보내 always-on-top을 해제한다.
+- 영상 검증: 로컬 파일 교체 시 이전 media-manifest 바이트/해시 불일치는 경고로 바꾸고 현재 파일의 SHA-256으로 다시 기록한다. 허용 파일명·로컬 경로·MP4 헤더·HTTP Range 검사는 유지한다. 업로드 조각 다운로드/복원 무결성 검사는 그대로 유지한다. MP4 헤더 검사는 전체 디코딩 성공의 증명이 아니며 실제 재생 검사가 별도로 필요하다.
+- 추가 변경 파일: `src/GarmentScannerWorkspace.tsx`, `src/garment-scanner.css`, `src/ImeTextInput.tsx`, `src/korean-input-conversion.ts`, `src/utils/koreanAutomata.ts`, `src/App.tsx`, `src/SavedOrderLookup.tsx`, `src/CustomerIdentityEditor.tsx`, `src/OperationsDashboard.tsx`, `src/ManagementCenter.tsx`, `src/CustomerMedia.tsx`, `src/index.css`, `electron/customer-video.cjs`, `tests/korean-automata.test.ts`, `scripts/verify-desktop-media.cjs`, `scripts/stage-windows-app.cjs`, `scripts/tests/desktop-media.test.cjs`, `scripts/verify-native-customer-browser.cjs` 및 본 문서.
+- 개발 환경 검증과 실제 Windows 설치/장비 검증을 구분한다. 기존 운영 DB·사진·설정·주문과 저장 스키마를 변경하지 않는다.
+
+---
+
+# K99 Windows 0.3.0 — 통합 UI·업무 개선 내역
+
+## 반영 결과
+
+1. **접수·세탁 전 검수**: 새 입력을 물세탁·이상 없음·실물 확인함으로 초기화합니다. 기존 지정 세탁 방법과 과거 검수 기록은 유지하고, 직원이 드라이세탁·주의 필요로 변경할 수 있습니다. 고객 동의는 자동 선택하지 않습니다.
+2. **한국어 입력**: 초기·동적 생성되는 모든 `input`/`textarea`에 `lang="ko"`를 적용하고 전역 `ime-mode: active`를 설정합니다. 키보드·한글 조합 이벤트를 가로채지 않습니다. Chromium은 해당 CSS로 OS IME를 강제 전환하지 않으므로 실제 한/영 상태는 Windows 현장 확인 대상입니다.
+3. **공식 안내 3종**: 요청된 면책동의·추가 기술료·통합 문안을 공통 템플릿으로 연결했습니다. 고객명·품목·추가비용과 미입력 비용 예시를 치환하며 편집·복사·저장할 수 있습니다. 기존 문안·동의 이력은 소급 교체하지 않습니다.
+4. **완료 검수**: 개별 완성 검수와 전체 출고 대기 전환 버튼을 제공합니다. 전후 사진 만들기·폴더 열기·완성 사진·새 스캔을 선행조건으로 요구하지 않습니다. 실제 미세탁·취소·보류·이미 인도된 주문은 차단하고, 전체 확정은 중간 저장 없이 한 번에 처리합니다.
+5. **완성 의류·출고**: 상단 대기 카드, 중간 선택 주문, 하단 단일 입력창으로 재구성했습니다. 중복 주문 검색 카드를 제거하고 연락처 끝 4자리·등록 바코드는 짧은 입력 대기 후 자동 선택합니다. Enter 스캔도 유지합니다. 직원 확정 인도는 스캔 체크리스트 없이 가능하며, 실제 스캔과 구분해 감사 이력을 남깁니다. 실제 배달 출고는 배달 중으로만 전환합니다.
+6. **오늘의 업무센터**: 완료일을 0일로 하여 한국 날짜 +9일·+13일 안내를 계산합니다. 접수일 기준 기존 보관료 계산은 유지합니다. 완료·9일·13일 문안은 K99 세탁의 품격 브랜드로 표시하고, 복사만으로 발송 완료를 기록하지 않습니다.
+
+## 이번 요청에서 변경·추가한 파일
+
+아래 `src/`, `tests/`는 `artifacts/k99-windows/` 기준입니다.
+
+| 파일 | 역할 |
+|---|---|
+| `src/field-inspection.ts` | 신규 검수 기본값과 직원 수정 반영 |
+| `src/InspectionStageDesk.tsx` | 기본 선택 UI, 개별·전체 완성 검수 버튼 |
+| `src/field-quality.ts` (신규) | 사진·스캔과 독립된 원자적 완료 검수 |
+| `src/care-notice-templates.ts` (신규) | 공식 안내문 3종 |
+| `src/process-stage.ts`, `src/inspection-guidance.ts` | 공통 공식 템플릿 연결 |
+| `src/korean-inputs.ts` (신규), `src/main.tsx`, `src/index.css` | 전역 한국어 입력 힌트 |
+| `src/GarmentScannerWorkspace.tsx`, `src/garment-scanner.css` | 출고 카드·단일 입력·직원 인도 확정 UI |
+| `src/order-handover.ts` | 명시적 직원 확인 인도와 감사 이력; 기존 엄격 스캔 API 유지 |
+| `src/customer-pickup-notices.ts` | 완료 후 0·9·13일 기준 및 브랜드 문안 |
+| `src/customer-notice-text.ts` | 완료 안내 문안 공통화 |
+| `tests/field-inspection.test.ts` | 변경된 검수 기본값 회귀 검사 |
+| `tests/field-ux-update.test.ts` (신규) | 완료 검수·일차 경계·문안 검사 |
+| `tests/korean-inputs.test.ts` (신규) | 초기·동적 입력란·포커스 언어 힌트 검사 |
+| `tests/staff-handover.test.ts` (신규) | 직원 인도·배달·차단 조건 검사 |
+| `scripts/test-desktop-field-ui.cjs` (신규) | 설치된 Vite/esbuild로 TS 업무 테스트 실행 |
+| `scripts/verify-native-customer-browser.cjs` | 임시 SQLite를 사용하는 통합 화면 시나리오 확장 |
+| `.github/workflows/windows-installer.yml` | Windows 패키징 전에 새 업무 테스트 실행 |
+| `scripts/make-windows-build-kit.py` | 새 테스트 실행기·문서 납품 구성 |
+| `docs/windows-field-operations.md`, 본 문서 | 사용·검증·변경 안내 |
+
+## 실제 검증
+
+- Node 자동 테스트 77개 + TypeScript 업무 테스트 20개 통과.
+- React 타입 검사, Vite 데스크톱 화면 빌드, Windows 패키징용 파일 배치 통과.
+- Chromium 통합 시나리오 11개 통과: 기존 원본 영상 4종·고객 IPC·사진 12장·탭 왕복에 더해 검수 기본값/안내문/언어 속성, 개별·전체 완료 검수, 연락처 자동 선택·무스캔 직원 인도 확정 저장을 확인했습니다.
+- 클립보드는 모의 어댑터에 전달된 문자열이 편집 문안과 정확히 같은지 검사했습니다. 실제 Windows 클립보드·IME·장비 검증은 아닙니다.
+- 브라우저 테스트는 OS 임시 SQLite·모의 Electron IPC/모니터·모의 장비만 사용합니다. 실제 운영 DB나 배포에 연결하지 않습니다.
+- 화면 빌드에는 기존 대형 번들 경고가 있으며 빌드 차단 오류는 없습니다.
+- 실제 Windows NSIS EXE 생성·설치·장비·OS IME 검증은 이번 환경에서 수행하지 않았습니다.
+
+## GitHub 교체와 데이터
+
+새 소스 업로드 ZIP을 해제해 기존 비공개 저장소의 동일 경로를 교체합니다. 내부 소스 ZIP은 해제하지 않습니다. 영상 조각·해시는 기존 묶음과 동일하므로 영상 2개 ZIP을 다시 업로드할 필요가 없습니다.
+
+기존 Windows SQLite·사진·태그·설정의 스키마 및 저장 경로는 변경하지 않았으며 마이그레이션이나 데이터 삭제를 실행하지 않았습니다. 원본 Replit 운영 프로젝트·운영 DB·운영 배포 및 현장 도우미는 수정하지 않았습니다.
 
 
 ---
@@ -340,3 +411,6 @@ Windows Server hosted runner의 패키징/Node 검사 ≠ Windows 11 실제 설�
 Electron Node 모드 ABI 검사 ≠ 앱 GUI 정상 실행 검사.
 설치 EXE 생성 ≠ 서명된 안전한 배포본 ≠ 카메라/프린터/스캐너/듀얼 모니터 현장 통과.
 현재 미서명 시험판이며 Windows 보안 경고/백신 검토와 `docs/windows11-acceptance.md` 검사는 별도로 필요하다.
+
+
+기존 저장소의 동일 경로를 덮어쓰세요. source 안의 Build-Kit ZIP은 풀지 않습니다. 기존 영상 분할 파일은 변경하지 않았으며 이 소스 묶음에는 포함하지 않았습니다.
