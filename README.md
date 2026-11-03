@@ -1,9 +1,38 @@
+# K99 Windows 0.3.0 — 고객 화면 입력 감지 최종 수정 소스
+
+## 교체 방법
+1. 이 바깥 ZIP만 압축 해제합니다.
+2. 기존 비공개 Windows 빌더 저장소에 .github/workflows/windows-installer.yml, source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip 및 .zip.sha256, source/customer-videos.upload.json, README.md를 같은 경로로 반영합니다.
+3. source 내부 Build-Kit.zip은 해제하지 않고 ZIP 그대로 유지합니다.
+4. 기존 source/customer-videos.zip.part001~part007은 삭제하거나 다시 업로드하지 마세요. 이번 소스 ZIP에는 변경 없는 대용량 영상 조각을 중복 포함하지 않습니다.
+5. Actions에서 Windows installer workflow의 Run workflow를 실행합니다. 이 자료 자체는 Windows 설치 EXE가 아니며 이번 작업에서 EXE를 생성/검증하지 않았습니다.
+
+## 영상 관련 주의
+- 재생 경로는 promo.mp4(대기), value/process/water/sneakers.mp4(수동 안내)로 분리했습니다. 런타임 promo 누락 시 value 대체는 금지합니다.
+- 원본 영상 바이트와 기존 영상 분할 묶음은 변경하지 않았습니다. 기존 빌드 절차는 별도 promo 원본이 없으면 기존 18.018초 원본을 promo.mp4라는 별도 파일로 배치합니다. 현재 이 파일의 바이트는 value 원본과 같습니다. 다른 홍보 영상으로 바꾸려면 빌드 소스 artifacts/k99-windows/media/videos/promo.mp4에 실제 파일을 제공해야 합니다.
+- 전체 수정 소스와 기존 초기 가격표/설정 코드가 들어 있습니다. 운영 고객 데이터, DB, 사진, 비밀키, node_modules, 빌드 결과물은 포함하지 않습니다.
+
+# 최신 고객 화면 정책 — 초기 IDLE 고정 · 접수 입력 감지
+
+이 절이 아래 과거 정책보다 우선한다.
+
+- 최초 실행/고객 창 재로드는 데이터·품목의 유무와 관계없이 `IDLE`, `activeGuideVideo = null`이다. 초기 스냅샷·저장된 주문·타이머는 안내 재생이나 영수증 표시를 유발하지 않는다.
+- 대기는 `/videos/promo.mp4`만 autoplay/loop/muted/playsInline로 반복한다. 안내는 `value.mp4`, `process.mp4`, `water.mp4`, `sneakers.mp4`를 직원 버튼으로만 1회 재생한다. promo 파일 누락 시 value로 대체하지 않는다.
+- 고객명 입력 시작(네이티브 한글 IME 조합 중 포함), 전화번호 숫자 입력, 품목 추가/수량 증가/품목 선택 시 `SWITCH_TO_RECEIPT`를 전송한다. Electron은 기존 보안 IPC→Main→고객 창 경로이며 브라우저는 같은 접수 source의 opener/channel만 사용한다. 요청에는 ID·발행 시각이 있고 만료/잘못된 요청은 거부한다. 저장하거나 새 창에서 재실행하지 않는다.
+- 입력 이벤트는 `IDLE`에서만 `RECEIPT`로 전환한다. 안내 재생 중에는 데이터를 갱신하되 영상을 중단하지 않는다. 명시적인 대기 버튼/ESC 뒤에도 새 입력은 대기를 해제한다. 단순 스냅샷·빈 데이터·탭 이동은 화면 모드를 바꾸지 않는다.
+- 안내 정상 종료/닫기는 정지→src 제거→load→DOM 언마운트 후 영수증으로 전환한다. 영상 오류는 직원에게 보고하고 자동으로 다른 화면/영상을 선택하지 않으며 닫기 버튼은 유지한다.
+- 영수증의 하단 접기/복원 바, 확대/보통, 고객 대기 버튼과 직원 전역 ESC는 그대로 유지한다.
+- TypeScript 검사·React desktop 빌드 통과. 업무/정책 테스트 28개, 네이티브/미디어 테스트 15개 통과. Chromium 22항목에서 네 영상 실제 첫 프레임/종료/닫기, 실제 키 입력·품목 추가의 대기 해제, 안내 중 입력, ESC·탭 이동·접기·확대를 확인했다. SQLite는 OS 임시 폴더, Electron IPC와 모니터는 모의이며 Windows 실물 검증이 아니다. 브라우저 전용 fallback은 이번 집중 실행에서 별도 검증하지 않았다.
+- 기존 영상 바이트는 변경하지 않았다. 기존 패키징 절차는 별도 promo 원본이 없으면 이전부터 사용하던 18.018초 에셋을 빌드 시 `promo.mp4`로 배치한다(현재 value 원본과 같은 바이트). 런타임의 value 자동 호출/대체는 제거했다. 별도의 다른 홍보 콘텐츠가 필요하면 `artifacts/k99-windows/media/videos/promo.mp4` 원본을 제공해야 한다.
+- 실제 Windows EXE 생성·설치·물리 장비는 이번에 검증하지 않았다. React의 기존 번들 크기 경고는 남는다. 브라우저 미리보기 캡처에서는 원본 promo 재생 실패 안내가 보였으나, 별도 Chromium 원본 재생 검사 22항목은 통과했다. 운영 데이터·사진·가격·저장 구조는 변경하지 않았다.
+
+
 # 최신 통합 수정: 출고·한글 자동 조합·18초 대기 영상
 
 이번 소스는 출고 카드의 출고 버튼 또는 하단 단일 검색창 Enter로 출고합니다. 단순 조회/입력 중에는 출고하지 않으며 중복 조회는 직원이 주문을 선택합니다.
 고객명과 이름 검색은 영문 키를 두벌식 한글로 자동 조합합니다. 전화번호/주문번호/바코드는 보호하며 네이티브 한글 조합 중 Enter는 출고하지 않습니다.
 고객 화면 최초 대기 시 18.018초 기존 원본 영상을 `promo.mp4`로 무한 반복합니다. 안내 4종은 1회 재생하며 종료/닫기 후 영상을 완전히 해제하고 반드시 접수·가격 확인 영수증으로 전환합니다. 품목이 없어도 대기 루프로 돌아가지 않습니다.
-직원 안내 버튼 아래 [대기 홍보 영상] 또는 직원 창 ESC로 언제든 대기로 전환할 수 있습니다. 고객 영수증에도 대기 버튼/ESC와 접기·펼치기·확대·보통 컨트롤을 제공합니다. 명시적 대기 선택은 실시간 스냅샷 때문에 취소되지 않으며, 안내를 다시 실행한 뒤 종료하면 영수증으로 돌아옵니다.
+최초 실행은 기존 주문/품목 유무와 관계없이 대기입니다. 직원 안내 버튼 아래 [대기 홍보 영상] 또는 직원 창 ESC로 언제든 대기로 전환할 수 있습니다. 고객 영수증에도 대기 버튼/ESC와 접기·펼치기·확대·보통 컨트롤을 제공합니다. 단순 데이터 수신은 화면을 바꾸지 않지만 고객명·전화번호 새 입력 또는 품목 추가 시에는 즉시 영수증으로 전환합니다. 안내 재생 중 입력은 영상을 중단하지 않으며, 정상 종료/닫기 후 영수증으로 돌아옵니다.
 기존 영상 업로드 묶음은 그대로 사용합니다. 별도 promo로 교체하려면 빌드 소스의 `artifacts/k99-windows/media/videos/promo.mp4`에 배치합니다.
 로컬 영상 교체 시 과거 manifest 해시 불일치는 차단 대신 경고/재계산합니다. 다운로드 조각 무결성·허용 경로·MP4 헤더 검사는 유지합니다.
 이 ZIP은 Windows EXE가 아니라 기존 비공개 저장소에 교체할 빌드 소스입니다. 실제 Windows 설치/스캐너/IME는 현장 검증이 필요합니다.
@@ -120,301 +149,3 @@ GitHub Windows 빌드, 실제 NSIS 설치, TSC 실물 인쇄, USB 발판과 스�
 8. 네 영상의 첫 프레임·소리·마지막까지 재생·닫기·실시간 접수 화면 복귀.
 9. 총액 수정·추가 기술료 동의·미동의·대시보드 금액·공정 이동 및 전후 사진.
 10. 외부 백업 매체에서 복구하고 주문·사진·태그·설정 및 D 폴더 사본까지 확인.
-
-
----
-
-# 최신 고객 화면 정책 — 수동 대기 전환 · ESC · 영수증 화면 조작
-
-이 절은 아래 과거 기록의 “안내 종료 후 대기 루프 복귀”를 대체한다.
-
-- 상태를 `IDLE`, `GUIDE_VIDEO`, `RECEIPT`로 분리했다. 최초 빈 대기 또는 명시적인 대기 홍보 버튼/ESC 요청 시 promo/value를 무한 반복한다.
-- 직원 화면 안내 4종 바로 아래 다크 톤 대기 홍보 영상 버튼을 추가했다. ESC와 같은 명령 경로를 사용한다. Electron에서는 직원 탭/접수 컴포넌트가 바뀌어도 전역 ESC가 동작한다. 브라우저는 기존 동작 중인 채널을 우선하고 다른 직원 경로에서는 발견 채널을 사용한다.
-- 영수증은 중앙 보통 패널/전체화면 확대 토글과 아래로 접기/하단 복원 바를 제공한다. 접기 동안 숨겨진 내용/도구는 inert 처리한다. 고객 영수증의 대기 홍보 버튼과 고객 창 ESC도 명시적 대기로 전환한다.
-- 명시적 대기 요청은 수신 중인 접수 스냅샷 때문에 즉시 취소되지 않는다. 다음 안내 버튼으로 안내 화면을 연 후 종료하면 다시 최신 영수증으로 전환한다. 데이터 수정/삭제는 없다.
-- 안내 4종은 `loop={false}`로 1회 재생한다. 자연 종료/닫기 시 먼저 ended 상태를 IPC로 전송하고, 플레이어를 정지하고 src를 제거·load한 후 안내 DOM을 언마운트하여 영수증을 표시한다.
-- 품목이 없거나 접수 스냅샷이 늦게 도착해도 영수증 상태는 유지한다. 데이터 수신 전에는 0건·0원 영수증을 표시하며 고객/품목 데이터 도착 시 현재 내용으로 갱신한다. source 변경 때문에 미디어 상태를 다시 초기화하지 않는다.
-- 변경 파일: `src/customer-media.ts`, `src/CustomerMedia.tsx`, `src/App.tsx`, `src/customer-idle-control.ts`, `src/CustomerReceiptPanel.tsx`, `src/customer-receipt-panel.css`, `src/index.css`, `electron/customer-display.cjs`, `tests/customer-playback-policy.test.ts`, `tests/customer-native.test.cjs`, `scripts/verify-native-customer-browser.cjs`.
-- 검증: TypeScript 업무/입력/영상 정책 테스트 27개, 네이티브 고객 화면 단위 테스트 11개, React 타입 검사, Vite desktop:build 통과. Chromium 집중 검사 `node scripts/verify-native-customer-browser.cjs --media-only`에서 18개 항목 통과(최초 대기 루프, 네 원본 영상 첫 프레임·종료·닫기, DOM 제거/소스 해제, 빈 스냅샷 후 영수증 유지, 확대/보통, 슬라이드 접기/복원, 고객/직원 대기 버튼, 실제 ESC 입력, 직원 장비 탭 이동 후 전역 ESC). SQLite는 OS 임시 저장소를 사용하며 Electron IPC/화면은 모의이다. 브라우저 전용 BroadcastChannel fallback은 이번 집중 검사의 대상이 아니다.
-- Windows EXE 생성·실제 설치·물리 모니터 검증은 이번 수정에서 수행하지 않았다. 기존 번들 크기 경고는 남아 있으며 별도 lint 통과를 주장하지 않는다. 기존 DB·사진·가격·영상 바이트·설치 설정은 변경하지 않는다.
-
----
-
-# 이전 통합 수정 — 출고 · 한글 오토마타 · 대기 홍보 루프
-
-검증 결과: TypeScript 업무 테스트 23개와 CJS 테스트 79개(합계 102개), React 타입 검사, Vite 데스크톱 빌드, 스테이징을 통과했다. 브라우저에서는 대기 루프·안내 4종·실시간 한글·검수·실제 Enter 인도 저장 등 13개 항목을 통과했다. 확장된 중복 주문 브라우저 검사는 복제 테스트 자료의 주문/의류 소유권 연결 오류로 중단되었으며, 테스트 자료를 정정했으나 그 확장 시나리오는 재검증하지 않았다. 중복 후보 분기 자체는 코드에 구현되어 있지만 브라우저 검증 완료로 보고하지 않는다. Windows EXE 생성/설치·실물 장비·실제 Windows IME는 미검증이다. 별도 ESLint 설정/스크립트가 없어 lint 통과는 주장하지 않는다. 기존 번들 크기 경고가 남아 있다.
-
-- 출고: 상단 출고 대기 카드 그리드(주문번호·고객명·수량·품목·출고 버튼)와 하단 단일 검색창. 고유 대기 주문은 Enter/스캐너 종료 입력으로 즉시 직원 인도 확정한다. 입력 중 대기는 조회만 하며 포커스를 빼앗지 않는다. 동명이인/연락처 중복은 선택 전 출고하지 않는다. 미완료·취소·보류 차단과 SQLite 동기 저장은 유지한다.
-- 한글: 제공된 `src/utils/koreanAutomata.ts`를 포함한다. 실제 입력 어댑터 `src/korean-input-conversion.ts`에서 완성 음절 재조합·겹받침 이동·독립 모음 조합을 보완한다. 고객명, 접수 재개/관리 검색과 출고 검색에 연결했으며 네이티브 IME 조합 중에는 변환/Enter 출고를 하지 않는다. 두벌식 `rn`은 `구`, `kp`는 `ㅏㅔ`이다. 새 라이브러리는 없다. 영문 이름도 한글 우선 입력으로 변환되므로 외국어 고객명 입력은 별도 영문 입력 선택 기능을 추가 검토할 수 있다.
-- 영상: 별도 원본 promo가 없어 기존 `value.mp4`(18.018초)를 원본 그대로 `resources/videos/promo.mp4`로 스테이징한다. 개발 환경은 같은 원본으로 fallback한다. 로컬 `artifacts/k99-windows/media/videos/promo.mp4`가 있으면 이를 우선 복사한다. 최초 대기 영상은 loop/muted/autoPlay/playsInline이며 종료 핸들러가 없다. 안내 4종 종료/닫기 후에는 최신 정책에 따라 영수증으로 전환한다. 안내 닫기도 IPC ended 상태를 보내 always-on-top을 해제한다.
-- 영상 검증: 로컬 파일 교체 시 이전 media-manifest 바이트/해시 불일치는 경고로 바꾸고 현재 파일의 SHA-256으로 다시 기록한다. 허용 파일명·로컬 경로·MP4 헤더·HTTP Range 검사는 유지한다. 업로드 조각 다운로드/복원 무결성 검사는 그대로 유지한다. MP4 헤더 검사는 전체 디코딩 성공의 증명이 아니며 실제 재생 검사가 별도로 필요하다.
-- 추가 변경 파일: `src/GarmentScannerWorkspace.tsx`, `src/garment-scanner.css`, `src/ImeTextInput.tsx`, `src/korean-input-conversion.ts`, `src/utils/koreanAutomata.ts`, `src/App.tsx`, `src/SavedOrderLookup.tsx`, `src/CustomerIdentityEditor.tsx`, `src/OperationsDashboard.tsx`, `src/ManagementCenter.tsx`, `src/CustomerMedia.tsx`, `src/index.css`, `electron/customer-video.cjs`, `tests/korean-automata.test.ts`, `scripts/verify-desktop-media.cjs`, `scripts/stage-windows-app.cjs`, `scripts/tests/desktop-media.test.cjs`, `scripts/verify-native-customer-browser.cjs` 및 본 문서.
-- 개발 환경 검증과 실제 Windows 설치/장비 검증을 구분한다. 기존 운영 DB·사진·설정·주문과 저장 스키마를 변경하지 않는다.
-
----
-
-# K99 Windows 0.3.0 — 통합 UI·업무 개선 내역
-
-## 반영 결과
-
-1. **접수·세탁 전 검수**: 새 입력을 물세탁·이상 없음·실물 확인함으로 초기화합니다. 기존 지정 세탁 방법과 과거 검수 기록은 유지하고, 직원이 드라이세탁·주의 필요로 변경할 수 있습니다. 고객 동의는 자동 선택하지 않습니다.
-2. **한국어 입력**: 초기·동적 생성되는 모든 `input`/`textarea`에 `lang="ko"`를 적용하고 전역 `ime-mode: active`를 설정합니다. 키보드·한글 조합 이벤트를 가로채지 않습니다. Chromium은 해당 CSS로 OS IME를 강제 전환하지 않으므로 실제 한/영 상태는 Windows 현장 확인 대상입니다.
-3. **공식 안내 3종**: 요청된 면책동의·추가 기술료·통합 문안을 공통 템플릿으로 연결했습니다. 고객명·품목·추가비용과 미입력 비용 예시를 치환하며 편집·복사·저장할 수 있습니다. 기존 문안·동의 이력은 소급 교체하지 않습니다.
-4. **완료 검수**: 개별 완성 검수와 전체 출고 대기 전환 버튼을 제공합니다. 전후 사진 만들기·폴더 열기·완성 사진·새 스캔을 선행조건으로 요구하지 않습니다. 실제 미세탁·취소·보류·이미 인도된 주문은 차단하고, 전체 확정은 중간 저장 없이 한 번에 처리합니다.
-5. **완성 의류·출고**: 상단 대기 카드, 중간 선택 주문, 하단 단일 입력창으로 재구성했습니다. 중복 주문 검색 카드를 제거하고 연락처 끝 4자리·등록 바코드는 짧은 입력 대기 후 자동 선택합니다. Enter 스캔도 유지합니다. 직원 확정 인도는 스캔 체크리스트 없이 가능하며, 실제 스캔과 구분해 감사 이력을 남깁니다. 실제 배달 출고는 배달 중으로만 전환합니다.
-6. **오늘의 업무센터**: 완료일을 0일로 하여 한국 날짜 +9일·+13일 안내를 계산합니다. 접수일 기준 기존 보관료 계산은 유지합니다. 완료·9일·13일 문안은 K99 세탁의 품격 브랜드로 표시하고, 복사만으로 발송 완료를 기록하지 않습니다.
-
-## 이번 요청에서 변경·추가한 파일
-
-아래 `src/`, `tests/`는 `artifacts/k99-windows/` 기준입니다.
-
-| 파일 | 역할 |
-|---|---|
-| `src/field-inspection.ts` | 신규 검수 기본값과 직원 수정 반영 |
-| `src/InspectionStageDesk.tsx` | 기본 선택 UI, 개별·전체 완성 검수 버튼 |
-| `src/field-quality.ts` (신규) | 사진·스캔과 독립된 원자적 완료 검수 |
-| `src/care-notice-templates.ts` (신규) | 공식 안내문 3종 |
-| `src/process-stage.ts`, `src/inspection-guidance.ts` | 공통 공식 템플릿 연결 |
-| `src/korean-inputs.ts` (신규), `src/main.tsx`, `src/index.css` | 전역 한국어 입력 힌트 |
-| `src/GarmentScannerWorkspace.tsx`, `src/garment-scanner.css` | 출고 카드·단일 입력·직원 인도 확정 UI |
-| `src/order-handover.ts` | 명시적 직원 확인 인도와 감사 이력; 기존 엄격 스캔 API 유지 |
-| `src/customer-pickup-notices.ts` | 완료 후 0·9·13일 기준 및 브랜드 문안 |
-| `src/customer-notice-text.ts` | 완료 안내 문안 공통화 |
-| `tests/field-inspection.test.ts` | 변경된 검수 기본값 회귀 검사 |
-| `tests/field-ux-update.test.ts` (신규) | 완료 검수·일차 경계·문안 검사 |
-| `tests/korean-inputs.test.ts` (신규) | 초기·동적 입력란·포커스 언어 힌트 검사 |
-| `tests/staff-handover.test.ts` (신규) | 직원 인도·배달·차단 조건 검사 |
-| `scripts/test-desktop-field-ui.cjs` (신규) | 설치된 Vite/esbuild로 TS 업무 테스트 실행 |
-| `scripts/verify-native-customer-browser.cjs` | 임시 SQLite를 사용하는 통합 화면 시나리오 확장 |
-| `.github/workflows/windows-installer.yml` | Windows 패키징 전에 새 업무 테스트 실행 |
-| `scripts/make-windows-build-kit.py` | 새 테스트 실행기·문서 납품 구성 |
-| `docs/windows-field-operations.md`, 본 문서 | 사용·검증·변경 안내 |
-
-## 실제 검증
-
-- Node 자동 테스트 77개 + TypeScript 업무 테스트 20개 통과.
-- React 타입 검사, Vite 데스크톱 화면 빌드, Windows 패키징용 파일 배치 통과.
-- Chromium 통합 시나리오 11개 통과: 기존 원본 영상 4종·고객 IPC·사진 12장·탭 왕복에 더해 검수 기본값/안내문/언어 속성, 개별·전체 완료 검수, 연락처 자동 선택·무스캔 직원 인도 확정 저장을 확인했습니다.
-- 클립보드는 모의 어댑터에 전달된 문자열이 편집 문안과 정확히 같은지 검사했습니다. 실제 Windows 클립보드·IME·장비 검증은 아닙니다.
-- 브라우저 테스트는 OS 임시 SQLite·모의 Electron IPC/모니터·모의 장비만 사용합니다. 실제 운영 DB나 배포에 연결하지 않습니다.
-- 화면 빌드에는 기존 대형 번들 경고가 있으며 빌드 차단 오류는 없습니다.
-- 실제 Windows NSIS EXE 생성·설치·장비·OS IME 검증은 이번 환경에서 수행하지 않았습니다.
-
-## GitHub 교체와 데이터
-
-새 소스 업로드 ZIP을 해제해 기존 비공개 저장소의 동일 경로를 교체합니다. 내부 소스 ZIP은 해제하지 않습니다. 영상 조각·해시는 기존 묶음과 동일하므로 영상 2개 ZIP을 다시 업로드할 필요가 없습니다.
-
-기존 Windows SQLite·사진·태그·설정의 스키마 및 저장 경로는 변경하지 않았으며 마이그레이션이나 데이터 삭제를 실행하지 않았습니다. 원본 Replit 운영 프로젝트·운영 DB·운영 배포 및 현장 도우미는 수정하지 않았습니다.
-
-
----
-
-# K99 Windows EXE 자동 제작 — 비공개 저장소 전용
-
-## 최종 패키징 단계 수정 및 확인 한계
-
-GitHub의 실제 마지막 실패 로그는 아직 제공되지 않았고 연결 API도 사용 가능하지 않아,
-이번 GitHub 실패의 직접 원인이 무엇인지 확정하지 않는다.
-`ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`만으로 네이티브 컴파일/NSIS/경로 중 하나를 단정하지 않는다.
-
-다만 기존 사용자 정의 NSIS 헤더에서 다음 컴파일 결함을 실제로 재현했다.
-
-`!insertmacro: macro named "MUI_HEADER_TEXT" not found!`
-
-electron-builder 26.8.1은 사용자 정의 헤더를 자신의 MUI2 포함보다 먼저 읽는다.
-헤더 함수에서 MUI 매크로를 먼저 사용하고 있었으므로 `MUI2.nsh`를 명시적으로 먼저 포함했다.
-설치 UI 함수·변수는 `BUILD_UNINSTALLER`가 아닌 컴파일에서만 정의하도록 분리했다.
-바로가기 선택, 설치/제거 동작 및 사용자 데이터 보존 정책 자체는 유지했다.
-
-- 실제 builder가 사용하는 NSIS 컴파일러로 설치/제거 **모의 헤더**를 각각 컴파일한다.
-  경고도 오류로 처리한다. 이 검사는 전체 K99 설치본 제작/실행과 다르다.
-- Actions는 기존 선언 파일·React·저장소/모의 장비 검사를 그대로 실행하고,
-  전체 패키징 전에 NSIS 헤더 컴파일 검사를 추가한다.
-- 최종 electron-builder는 설치된 CLI를 Node로 직접 실행한다.
-  원본 stdout/stderr를 실시간 표시하고 `packaging-console.log`에도 보존한다.
-  실패 시 `K99-builder-diagnostics` Artifact에서 단계별 로그와 원본 오류를 받는다.
-- `npmRebuild:true`, `buildDependenciesFromSource:true`와 잠금 파일의 Electron 버전은 유지한다.
-  ABI 검사는 개발용 Electron이 아닌 실제 `win-unpacked/K99-Windows-V1.exe`를 Node 모드로
-  실행해 SQLite 바인딩을 로드하며 Electron 버전도 대조한다. GUI/장비를 실행하는 검사는 아니다.
-- 출력 경로는 `generated-artifacts/windows-installer`이며 기존 앱 ID,
-  `%LOCALAPPDATA%\K99WindowsV1`, 관리자 설정·DB 구조는 변경하지 않는다.
-- **Windows x64 전체 빌드, K99 EXE 생성·크기·SHA-256, Windows 11 실제 설치는 미검증이다.**
-  NSIS 모의 검사에서 생성하는 `*-probe-only.exe`는 K99 설치본이 아니며 배포하지 않는다.
-
-이번 수정의 Linux 검증: NSIS 설치/제거 모의 헤더 컴파일 각각 통과,
-빌더·입력 경로·원본 오류 보존 검사 21개 통과.
-정제된 ZIP에는 모의 EXE, 실제 DB/사진/설정, 다운로드한 NSIS 도구를 포함하지 않는다.
-한 번의 새 Actions 실행으로 검증 절차를 이어가도록 구성했지만
-원본 GitHub 로그 없이 모든 Windows 패키징 문제가 해결되었다고 보장하지 않는다.
-
-## Windows 입력 경로 검사 수정
-
-이 수정본은 `src/index.ts is missing from tsconfig inputs` 오판을 수정한다.
-TypeScript는 Windows에서도 입력 경로에 `/`를 사용하지만 기존 검사는
-`path.join`이 만드는 `\` 경로와 문자열을 그대로 비교했다.
-실제 `parseJsonConfigFileContent`로 이 불일치를 재현하고 양쪽의 절대 경로를
-같은 구분자·Windows 대소문자 규칙으로 정규화한 뒤 전체 경로를 비교하도록 수정했다.
-다른 프로젝트의 `index.ts`나 누락 파일을 통과시키는 부분 경로 검사는 사용하지 않는다.
-
-두 라이브러리의 tsconfig는 `extends: ../../tsconfig.base.json`, `include: ["src"]`,
-`composite: true`, `emitDeclarationOnly: true`, `rootDir: src`, `outDir: dist`이며
-별도 `files`·`exclude`·프로젝트 참조가 없다. 실제 파싱 결과에 진입 파일이 포함되어
-있으므로 tsconfig와 앱 기능은 변경하지 않는다.
-
-수정본 로그 식별 문구: **K99 DIRECT-TSC WINDOWS-PATH-FIX**.
-자동 실행 순서: 의존성 설치 → Windows 입력 경로 회귀 테스트 →
-두 라이브러리의 입력 검사·강제 선언 빌드·출력 파일 검사 → React 검사 →
-기존 Electron/NSIS 제작·ABI 검사·EXE SHA-256 검사 → Artifacts.
-테스트는 Windows hosted runner에서도 실제 두 tsconfig를 파싱하며,
-가상 Windows 경로 사례로 이전 비교의 실패와 수정 비교의 성공을 대조한다.
-
-## 이번 수정본 업로드: 기존 4개 파일 교체
-
-다운로드 ZIP 자체를 GitHub에 올리지 말고 압축을 풀어 **아래 네 경로의 파일을 같은 경로에 덮어쓴다**.
-다른 프로젝트나 저장소에는 업로드하지 않는다. 이미 있는 `.gitignore`는 유지해도 된다.
-
-1. `.github/workflows/windows-installer.yml`
-2. `source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip`
-3. `source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip.sha256`
-4. `README.md`
-
-GitHub 웹 화면에서 workflow는 기존 파일의 편집 버튼으로 교체하고,
-source 폴더의 ZIP/sha256은 **Add file → Upload files**에서 함께 교체한다.
-README는 루트 기존 파일을 교체한다. 숨김 `.github` 폴더를 빠뜨리지 않는다.
-4개 모두 커밋한 뒤 Actions → Build K99 Windows Installer → Run workflow를
-한 번 실행한다. 현재 브랜치를 선택하고 사용량·비용 확인란을 체크한다.
-실제 저장소의 기존 4개 파일 경로는 이 환경에서 조회하지 않았으므로,
-경로가 다르면 기존 파일명을 임의로 바꾸지 말고 위 경로를 기준으로 배치한다.
-
-### 이번 수정본 확인 및 TS6305 원인
-
-`lib/api-client-react/package.json`에는 `scripts.build`가 없다.
-이 패키지에 `pnpm --filter ... run build`를 호출하면 선언 파일이 생성되지 않는다.
-현재 로컬 workflow에는 이 잘못된 호출이 없었으며, 실제 원격 workflow는 조회하지 않았다.
-따라서 원격 파일/브랜치가 이전 버전인지 여부를 단정하지 않는다.
-
-이번 workflow의 라이브러리 단계 이름은
-**Build and verify declarations directly with TypeScript (no package build script)**이다.
-실행 로그에 **K99 DIRECT-TSC WINDOWS-PATH-FIX**, workflow commit, 소스 ZIP SHA-256이 표시되어야 한다.
-이 문구 없이 기존 filtered `build` 오류가 나오면 해당 실행의 workflow 파일 및 선택 브랜치를 확인한다.
-이전 실패 실행의 Re-run jobs 대신 **교체 커밋이 있는 브랜치에서 새 Run workflow**를 실행한다.
-
-### TS6305 수정과 빌드 순서
-
-`api-client-react`는 composite/emitDeclarationOnly 프로젝트이고 React 앱은 이를 참조한다.
-`tsc -p ... --noEmit`은 참조 라이브러리를 자동 빌드하지 않으므로 깨끗한 checkout에서
-`dist/index.d.ts`가 없으면 TS6305가 발생한다. React 기능 파일을 변경하거나
-검사를 생략하지 않고, 다음 순서로 해결한다.
-
-1. 잠금 파일 기준 의존성 설치(기존 Node/Python/VS 준비 설정 유지).
-2. `node scripts/build-desktop-declarations.cjs`
-   — 설치된 TypeScript CLI를 Node로 직접 실행하여 두 라이브러리를
-   `--build --force --verbose`로 선언 파일 빌드한다. 패키지 `build` 스크립트와
-   운영 DB 패키지는 호출하지 않는다. tsconfig와 생성된 `dist/index.d.ts`를 검사한다.
-3. React `typecheck`, 로컬/모의 장비 테스트.
-4. Electron 데스크톱 번들 → 별도 런타임 스테이징 → Windows x64 네이티브 재빌드
-   (`npmRebuild:true`, `buildDependenciesFromSource:true`) → NSIS EXE.
-5. 패키징된 better-sqlite3를 Electron Node 모드에서 로드하여 ABI 검사.
-6. EXE 크기·PE 형식·SHA-256 검증 후에만 결과 Artifact 업로드.
-
-직접 Windows에서 `desktop:dist`를 실행하는 경우에도 내부 라이브러리 빌드와
-React 검사를 선행한다. 실패 시 Actions Summary에 실패 단계와 수정 대상이 표시되고,
-패키징 단계별 로그 및 생성된 builder 진단 파일은 별도 실패 Artifact로 보관된다.
-원래 TypeScript 오류의 파일·행·오류 코드는 해당 실패 단계 전체 로그에서 확인한다.
-
-### 이번 수정의 실제 검증 범위
-
-- Linux 임시 소스 사본에서 기존 선언 파일 및 빌드 캐시 없이 검사했다.
-  의존성 패키지는 이미 설치된 로컬 패키지를 재사용했으며 Windows 신규 설치 검증은 아니다.
-- 수정 전 `AdminPasswordPanel.tsx`, `DesktopStatusStrip.tsx`, `order-deletion.ts`에서
-  TS6305 세 건을 재현했다.
-- 위 내부 라이브러리 빌드 후 React 타입 검사 종료 코드 0을 확인했다.
-- 설치 빌더 설정·순서·아이콘·바로가기·데이터 보존 정적 검사 11개를 통과했다.
-- 입력 검사 회귀 테스트 7개를 통과했다. 실제 두 tsconfig 파싱, 가상 Windows 경로에서
-  구형 비교 실패/수정 비교 성공, 대소문자·UNC·한글/공백·다른 드라이브·누락·제외 파일을 검사한다.
-- `--verify-only`는 선언 파일 생성 전 실패하고 생성 후 성공함을 확인했다.
-- Windows x64 패키징, Electron SQLite ABI 실행, NSIS EXE 생성 및 크기·해시,
-  Windows 11 실제 설치와 장비는 여기서 검증하지 않았다.
-  이후 GitHub 실행이 성공하여 실제 산출물이 생긴 경우에만 EXE 생성 성공으로 판단한다.
-
-## 현재 사실
-
-이 문서와 workflow는 **자동 빌드 준비 파일**이다. 실제 GitHub 저장소 생성·업로드·Windows 빌드·EXE 확보 여부는 각각 별도로 보고한다.
-workflow가 존재하거나 Linux 검사에 통과했다는 이유만으로 EXE 생성 성공이라고 보고하지 않는다.
-최종 파일명은 `K99-Windows-V1-Setup-0.3.0-x64.exe`이다.
-
-## 승인 및 비용 경계
-
-- 소스 공개 금지. 전용 **Private** 저장소 `K99-Windows-V1-Installer`를 사용한다.
-- 기존 매장 프로젝트·저장소·DB·배포·장치 도우미에는 접근하지 않는다.
-- 준비 ZIP에는 정제된 소스 ZIP·SHA-256·workflow·설명서만 있다. 운영 DB, 실제 사진, 비밀키, 개발 미리보기 데이터, `.git` 이력은 없다.
-- 계정 연결 승인과 저장소 생성/업로드 승인은 별개다. 후자는 승인받았더라도 GitHub API 접근이 확인되지 않으면 수행하지 않는다.
-- 비공개 GitHub Actions의 실행 시간·산출물 저장은 계정별 무료 한도가 있고 초과 비용이 생길 수 있다.
-- 이 workflow는 push/PR/스케줄로 실행되지 않는다. 수동 실행 시에도 `usage_approved` 확인을 켜야 하며 저장소가 Private이어야 Windows 작업을 할당한다.
-- **남은 무료 실행량과 산출물 저장 용량 또는 별도 비용 승인을 확인하기 전에는 Run workflow를 누르지 않는다.** 체크박스 자체가 과금을 차단하는 장치는 아니다.
-- 자동 결제나 유료 플랜 전환은 구성하지 않는다. 작업 최대 40분·동시 빌드 1개·산출물 보관 7일이며, 이전 실행을 반복하지 않는다.
-- 공식 안내: https://docs.github.com/en/billing/managing-billing-for-your-products/about-billing-for-github-actions
-
-## 저장소에 올릴 정확한 구성
-
-`K99-Windows-V1-GitHub-Private-Repository.zip`을 압축 해제한 **내용물**을 전용 비공개 저장소 루트에 넣는다.
-이 외의 작업 폴더 전체를 업로드하지 않는다.
-
-```
-.github/workflows/windows-installer.yml
-source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip
-source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip.sha256
-README.md
-```
-
-소스 ZIP의 SHA-256을 검사한 뒤 Windows 2022 hosted runner에서 압축을 푼다.
-pnpm 10.26.1, Node 24 x64, Python 3.12를 자동 준비한다.
-Microsoft 제공 Windows 이미지의 VS2022 C++ x64 도구와 Windows SDK를 검사하며 누락 시 중단한다.
-고정 잠금 파일 설치 → 타입/로컬 DB 검사 → React 빌드 → Electron ABI SQLite 재빌드 → NSIS 제작 순서다.
-사용한 외부 Actions는 검토 시 확인한 전체 commit SHA로 고정했다.
-
-## 명령어 없이 GitHub 웹 화면에서 진행하는 대안
-
-GitHub 연동 API로 업로드할 수 없을 때만 사용한다. 비공개 저장소 생성 승인을 이미 받은 작업에 대한 웹 대안이다.
-
-1. GitHub의 **New repository**에서 이름을 `K99-Windows-V1-Installer`로 정하고 **Private**를 확인한다. 같은 이름이 이미 있으면 사용/덮어쓰기하지 말고 중단한다.
-2. 위 저장소 준비 ZIP을 PC에서 풀고 **Add file → Upload files**에서 `.github`, `source`, 설명서 등을 루트에 올린다. ZIP 하나만 저장소 루트에 올리는 것이 아니다.
-3. 업로드 후 자동 실행되지 않는지 확인한다. Actions에 **Build K99 Windows Installer**가 보여야 한다.
-4. 계정 Billing/Actions 사용량·저장 용량을 확인하고 승인한 후에만 **Run workflow**에서 확인란을 체크하여 실행한다.
-5. 초록색 성공이면 실행 화면 **Artifacts → K99-Windows-V1-0.3.0-x64**를 다운로드한다. 비공개 다운로드에는 해당 GitHub 계정 접근 권한이 필요하다.
-
-`skipped`는 빌드 성공이 아니다. 확인란이 꺼져 있거나 저장소가 Public이면 작업이 생략되고 EXE도 생성되지 않는다. 반드시 실제 artifact와 manifest를 확인한다.
-
-## 실제 성공 판정과 전달
-
-단순 컴파일 외에 다음을 검사한 경우에만 산출물을 업로드한다.
-
-- `win-unpacked/K99-Windows-V1.exe`의 PE x64(AMD64) 헤더
-- 패키징된 SQLite `.node`를 Electron의 Node 모드에서 실제 로드하여 ABI 확인
-- 정확한 이름의 설치 EXE 존재, 1MB 이상, MZ/PE 헤더, 실제 SHA-256과 체크섬 파일 일치
-- 파일명·bytes·SHA-256·Electron 버전·ABI를 `build-manifest.json`으로 기록
-
-artifact에는 EXE·SHA-256·build-manifest.json·electron-abi-result.json만 포함한다.
-GitHub의 artifact 다운로드는 ZIP이므로 한 번 압축을 푼 뒤 **EXE를 더블클릭**한다.
-설치 후에는 PowerShell, 명령 프롬프트, Node/Python, 웹 브라우저 접속 없이 바로가기로 실행한다.
-별도로 EXE 파일을 전달하는 경우에도 그 파일의 크기와 SHA-256을 위 manifest와 대조한다.
-
-## 바로가기·아이콘·독립 설치
-
-- 설치 창에서 바탕화면/시작 메뉴 바로가기 생성을 각각 선택한다.
-- 표시 이름: **K99 스마트 접수 시스템**
-- 시작 메뉴 위치: **K99-Windows-V1 → K99 스마트 접수 시스템**
-- K99 글자·세탁물·체크 표시의 청록/금색 전용 ICO를 사용한다. 기존 명품 세탁비 프로그램을 재사용하지 않는다.
-- 이미 같은 이름의 바로가기가 있으면 덮어쓰지 않고 안내한다. 기존 바로가기나 프로그램을 제거하지 않는다.
-- 실행 파일과 앱 ID/사용자 데이터 경로는 기존 Windows V1과 동일하게 유지하여 데이터 보존한다.
-- 실제 아이콘 표시·한글 바로가기·선택 해제·설치/제거는 Windows 현장 검증 전까지 미검증이다.
-
-## 검증 구분
-
-Windows Server hosted runner의 패키징/Node 검사 ≠ Windows 11 실제 설치 검사.
-Electron Node 모드 ABI 검사 ≠ 앱 GUI 정상 실행 검사.
-설치 EXE 생성 ≠ 서명된 안전한 배포본 ≠ 카메라/프린터/스캐너/듀얼 모니터 현장 통과.
-현재 미서명 시험판이며 Windows 보안 경고/백신 검토와 `docs/windows11-acceptance.md` 검사는 별도로 필요하다.
-
-
-기존 저장소의 동일 경로를 덮어쓰세요. source 안의 Build-Kit ZIP은 풀지 않습니다. 기존 영상 분할 파일은 변경하지 않았으며 이 소스 묶음에는 포함하지 않았습니다. Windows EXE가 아닙니다.
