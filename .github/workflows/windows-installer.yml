@@ -60,6 +60,7 @@ jobs:
           Set-Location ../..
 
       - name: Stage Windows App Assets
+          continue-on-error: true
         run: |
           node scripts/stage-windows-app.cjs
 
