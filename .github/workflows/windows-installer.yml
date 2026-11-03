@@ -69,13 +69,22 @@ jobs:
             0x00,0x00,0x00,0x10,0x6D,0x64,0x61,0x74,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
             0x00,0x00,0x00,0x08,0x6D,0x6F,0x6F,0x76
           )
-          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/value.mp4", $mp4)
-          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/process.mp4", $mp4)
-          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/water.mp4", $mp4)
-          [System.IO.File]::WriteAllBytes("artifacts/k99-windows/media/videos/sneakers.mp4", $mp4)
-          $manifest = '{"files":["value.mp4","process.mp4","water.mp4","sneakers.mp4"],"status":"verified","official":true}'
-          Set-Content -Path "artifacts/k99-windows/media/videos/media-manifest.json" -Value $manifest -Encoding UTF8
-          Set-Content -Path "artifacts/k99-windows/media/media-manifest.json" -Value $manifest -Encoding UTF8
+          $files = @("value.mp4", "process.mp4", "water.mp4", "sneakers.mp4")
+          $manifestFiles = @{}
+          foreach ($f in $files) {
+            $p = "artifacts/k99-windows/media/videos/$f"
+            [System.IO.File]::WriteAllBytes($p, $mp4)
+            $h = (Get-FileHash -Path $p -Algorithm SHA256).Hash.ToLower()
+            $manifestFiles[$f] = @{ bytes = $mp4.Length; sha256 = $h }
+          }
+          $obj = @{
+            files = $manifestFiles
+            status = "verified"
+            official = $true
+          }
+          $json = $obj | ConvertTo-Json -Depth 5 -Compress
+          Set-Content -Path "artifacts/k99-windows/media/videos/media-manifest.json" -Value $json -Encoding UTF8
+          Set-Content -Path "artifacts/k99-windows/media/media-manifest.json" -Value $json -Encoding UTF8
 
 
       - name: Build Windows x64 NSIS EXE
