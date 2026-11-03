@@ -3,6 +3,7 @@
 이번 소스는 출고 카드의 출고 버튼 또는 하단 단일 검색창 Enter로 출고합니다. 단순 조회/입력 중에는 출고하지 않으며 중복 조회는 직원이 주문을 선택합니다.
 고객명과 이름 검색은 영문 키를 두벌식 한글로 자동 조합합니다. 전화번호/주문번호/바코드는 보호하며 네이티브 한글 조합 중 Enter는 출고하지 않습니다.
 고객 화면 최초 대기 시 18.018초 기존 원본 영상을 `promo.mp4`로 무한 반복합니다. 안내 4종은 1회 재생하며 종료/닫기 후 영상을 완전히 해제하고 반드시 접수·가격 확인 영수증으로 전환합니다. 품목이 없어도 대기 루프로 돌아가지 않습니다.
+직원 안내 버튼 아래 [대기 홍보 영상] 또는 직원 창 ESC로 언제든 대기로 전환할 수 있습니다. 고객 영수증에도 대기 버튼/ESC와 접기·펼치기·확대·보통 컨트롤을 제공합니다. 명시적 대기 선택은 실시간 스냅샷 때문에 취소되지 않으며, 안내를 다시 실행한 뒤 종료하면 영수증으로 돌아옵니다.
 기존 영상 업로드 묶음은 그대로 사용합니다. 별도 promo로 교체하려면 빌드 소스의 `artifacts/k99-windows/media/videos/promo.mp4`에 배치합니다.
 로컬 영상 교체 시 과거 manifest 해시 불일치는 차단 대신 경고/재계산합니다. 다운로드 조각 무결성·허용 경로·MP4 헤더 검사는 유지합니다.
 이 ZIP은 Windows EXE가 아니라 기존 비공개 저장소에 교체할 빌드 소스입니다. 실제 Windows 설치/스캐너/IME는 현장 검증이 필요합니다.
@@ -123,15 +124,18 @@ GitHub Windows 빌드, 실제 NSIS 설치, TSC 실물 인쇄, USB 발판과 스�
 
 ---
 
-# 최신 고객 화면 정책 — 안내 종료 후 반드시 영수증 표시
+# 최신 고객 화면 정책 — 수동 대기 전환 · ESC · 영수증 화면 조작
 
 이 절은 아래 과거 기록의 “안내 종료 후 대기 루프 복귀”를 대체한다.
 
-- 상태를 `IDLE`, `GUIDE_VIDEO`, `RECEIPT`로 분리했다. 최초 빈 대기에서만 promo/value를 무한 반복한다.
+- 상태를 `IDLE`, `GUIDE_VIDEO`, `RECEIPT`로 분리했다. 최초 빈 대기 또는 명시적인 대기 홍보 버튼/ESC 요청 시 promo/value를 무한 반복한다.
+- 직원 화면 안내 4종 바로 아래 다크 톤 대기 홍보 영상 버튼을 추가했다. ESC와 같은 명령 경로를 사용한다. Electron에서는 직원 탭/접수 컴포넌트가 바뀌어도 전역 ESC가 동작한다. 브라우저는 기존 동작 중인 채널을 우선하고 다른 직원 경로에서는 발견 채널을 사용한다.
+- 영수증은 중앙 보통 패널/전체화면 확대 토글과 아래로 접기/하단 복원 바를 제공한다. 접기 동안 숨겨진 내용/도구는 inert 처리한다. 고객 영수증의 대기 홍보 버튼과 고객 창 ESC도 명시적 대기로 전환한다.
+- 명시적 대기 요청은 수신 중인 접수 스냅샷 때문에 즉시 취소되지 않는다. 다음 안내 버튼으로 안내 화면을 연 후 종료하면 다시 최신 영수증으로 전환한다. 데이터 수정/삭제는 없다.
 - 안내 4종은 `loop={false}`로 1회 재생한다. 자연 종료/닫기 시 먼저 ended 상태를 IPC로 전송하고, 플레이어를 정지하고 src를 제거·load한 후 안내 DOM을 언마운트하여 영수증을 표시한다.
 - 품목이 없거나 접수 스냅샷이 늦게 도착해도 영수증 상태는 유지한다. 데이터 수신 전에는 0건·0원 영수증을 표시하며 고객/품목 데이터 도착 시 현재 내용으로 갱신한다. source 변경 때문에 미디어 상태를 다시 초기화하지 않는다.
-- 변경 파일: `src/customer-media.ts`, `src/CustomerMedia.tsx`, `src/App.tsx`, `tests/customer-playback-policy.test.ts`, `scripts/verify-native-customer-browser.cjs`.
-- 검증: TypeScript 업무/입력/영상 정책 테스트 26개, React 타입 검사, Vite desktop:build 통과. Chromium 집중 검사 `node scripts/verify-native-customer-browser.cjs --media-only`에서 11개 항목 통과(최초 대기 루프, 네 원본 영상 첫 프레임·종료·닫기, DOM 제거/소스 해제, 빈 스냅샷 후 영수증 유지). SQLite는 OS 임시 저장소를 사용하며 Electron IPC/화면은 모의이다.
+- 변경 파일: `src/customer-media.ts`, `src/CustomerMedia.tsx`, `src/App.tsx`, `src/customer-idle-control.ts`, `src/CustomerReceiptPanel.tsx`, `src/customer-receipt-panel.css`, `src/index.css`, `electron/customer-display.cjs`, `tests/customer-playback-policy.test.ts`, `tests/customer-native.test.cjs`, `scripts/verify-native-customer-browser.cjs`.
+- 검증: TypeScript 업무/입력/영상 정책 테스트 27개, 네이티브 고객 화면 단위 테스트 11개, React 타입 검사, Vite desktop:build 통과. Chromium 집중 검사 `node scripts/verify-native-customer-browser.cjs --media-only`에서 18개 항목 통과(최초 대기 루프, 네 원본 영상 첫 프레임·종료·닫기, DOM 제거/소스 해제, 빈 스냅샷 후 영수증 유지, 확대/보통, 슬라이드 접기/복원, 고객/직원 대기 버튼, 실제 ESC 입력, 직원 장비 탭 이동 후 전역 ESC). SQLite는 OS 임시 저장소를 사용하며 Electron IPC/화면은 모의이다. 브라우저 전용 BroadcastChannel fallback은 이번 집중 검사의 대상이 아니다.
 - Windows EXE 생성·실제 설치·물리 모니터 검증은 이번 수정에서 수행하지 않았다. 기존 번들 크기 경고는 남아 있으며 별도 lint 통과를 주장하지 않는다. 기존 DB·사진·가격·영상 바이트·설치 설정은 변경하지 않는다.
 
 ---
@@ -413,4 +417,4 @@ Electron Node 모드 ABI 검사 ≠ 앱 GUI 정상 실행 검사.
 현재 미서명 시험판이며 Windows 보안 경고/백신 검토와 `docs/windows11-acceptance.md` 검사는 별도로 필요하다.
 
 
-기존 저장소의 동일 경로를 덮어쓰세요. source 안의 Build-Kit ZIP은 풀지 않습니다. 기존 영상 분할 파일은 변경하지 않았으며 이 소스 묶음에는 포함하지 않았습니다.
+기존 저장소의 동일 경로를 덮어쓰세요. source 안의 Build-Kit ZIP은 풀지 않습니다. 기존 영상 분할 파일은 변경하지 않았으며 이 소스 묶음에는 포함하지 않았습니다. Windows EXE가 아닙니다.
