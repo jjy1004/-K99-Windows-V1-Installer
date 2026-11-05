@@ -1,4 +1,22 @@
-# 스마트 접수·오늘의 할 일 — V2-TODAY-IME-20261105
+# 실행 오류 긴급 패치 — V2-PICKUP-STARTUP-20261105
+
+- 원인: 스테이징은 pickup-templates.json을 복사했지만 최종 Electron files 필터는 catalog.json만 포함했다.
+- 수정: pickup-notices.cjs는 원문4종을 내부 상수로 보유한다. 실행 시 pickup-templates.json을 require하지 않는다.
+- 렌더러 빌드용 JSON은 유지하며 내부 상수와 문안이 일치하는지 자동 검사한다.
+- 최종 파일 필터는 electron/core/*.json을 포함하도록 수정했다.
+- JSON을 제외한 코어 복사본에서 desktop-manager/index 모듈과 실제 임시 SQLite 시작을 검사한다.
+- GitHub Windows 검증은 최종 app.asar 코어를 실제 패키지 EXE의 Node 모드로 불러와 빈 시험 DB를 검사한다.
+  이 검사는 실제 매장 DB·운영 서비스·장비·앱 UI를 열지 않는다.
+- 이번 다운로드는 재빌드 소스다. 실제 Windows EXE 생성/설치 성공을 의미하지 않는다.
+- 이번 패치 검증: TypeScript 및 desktop:build 통과, Node113개+업무/입력 로직36개=149개 통과.
+  JSON 없는 단일 모듈의4종 문안 일치, JSON 없는 코어 전체의 실제 임시 SQLite 시작을 포함한다.
+  최종 ASAR/EXE 코어 검사는 Windows GitHub 빌드에서 실행하도록 추가했으며 현재 Linux에서 통과했다고 주장하지 않는다.
+- 기존 영상 조각은 유지하고 .github/workflows 및 source, README.md를 같은 경로로 덮어쓴 뒤 Run workflow를 실행한다.
+- 설치 후 V2-PICKUP-STARTUP-20261105 식별자를 확인한다. 고객 데이터·사진·관리자 설정과 앱 설치 식별자는 바꾸지 않았다.
+
+---
+
+# 스마트 접수·오늘의 할 일 — 이전 변경 내용
 
 ## 접수
 - 큰 새 접수 시작 버튼은 현재 화면/초안만 초기화한다. 저장된 고객·주문·사진·태그는 삭제하지 않는다.
@@ -18,7 +36,7 @@
 - 한국 날짜의 자정 기준 경과 일수이며 접수일은0일이다. 여러 단계가 밀리면 최신 단계1개만 권장한다.
 - 9/13 등 이전 정책 이력은 삭제/재작성하지 않는다. 실제 발송된 기존 단계는 대응 단계 중복 발송 방지에만 사용한다.
 - 발송하지 않은 이전 단계를 발송 완료로 만들어 기록하지 않는다.
-- 4개 메시지의 원문은 pickup-templates.json을 단일 원본으로 사용한다.
+- 4개 메시지는 렌더러용 pickup-templates.json과 백엔드 내부 기본 상수의 일치 검사로 원문을 유지한다.
 - ○ 날짜/시간 자리표시는 임의로 채우지 않는다. 직원이 실제 일정으로 편집한 뒤 외부 문자앱에서 보낸다.
 - 문안 복사는 발송이 아니다. 발송 완료 처리는 별도 확인을 거쳐 기록만 저장한다. 자동 SMS는 없다.
 - 발송 완료는 pickup_notices 테이블에 종류·시각·직원 확인 문안으로 저장한다.
@@ -32,7 +50,7 @@ TypeScript/npm build/desktop build와 Node 검사로 확인한다. 단위검사 
 렌더러 요청 계약은 실제 SQLite와 연결하되 IPC 전송부만 대체하는 Node 검사이며 실제 Windows IPC 검증이 아니다.
 Windows11 실제 설치/한국어 IME/풋스위치/물리 장비는 현장 확인이 필요하다.
 새 EXE 생성·설치는 별도다. source ZIP/sha256/upload.json/workflow를 같은 묶음으로 교체하고 기존 영상 조각은 유지한다.
-설치 후 V2-TODAY-IME-20261105 표시를 확인한다. 고객 Excel·DB·사진·인증키는 소스 ZIP에 포함하지 않는다.
+이전 수정본 식별자는 V2-TODAY-IME-20261105였다. 고객 Excel·DB·사진·인증키는 소스 ZIP에 포함하지 않는다.
 
 2026-11-05 개발 환경 확인: TypeScript 통과, Node110개+화면/업무 로직36개=146개 통과.
 `PORT=5173 BASE_PATH=/ npm --prefix artifacts/k99-windows run build` 및

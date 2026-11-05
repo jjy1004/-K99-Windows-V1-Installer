@@ -1,10 +1,10 @@
 {
-  "patchId": "V2-TODAY-IME-20261105",
+  "patchId": "V2-PICKUP-STARTUP-20261105",
   "version": "0.3.0",
   "source": {
     "name": "K99-Windows-V1-0.3.0-Windows-Build-Kit.zip",
-    "bytes": 938402,
-    "sha256": "b29a3b1abe32fa8e52d4253a2a0c1dedf6cf4880a9f25a4211ee403e7df8c235"
+    "bytes": 941511,
+    "sha256": "7e14b27bcfe5576059f9a86643a6c5f3aa01c4f35c6079bde029221ecd4da0df"
   },
   "installer": "K99-Windows-V1-Setup-0.3.0-x64.exe",
   "windowsVerified": false
