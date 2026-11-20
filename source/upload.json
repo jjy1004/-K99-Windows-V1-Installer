@@ -2,8 +2,8 @@
   "version": "2.4.6",
   "source": {
     "name": "K99-Windows-V1-0.3.0-Windows-Build-Kit.zip",
-    "bytes": 1345949,
-    "sha256": "9d07a3ef8abe09b7036ffb803d5fbf75594a3dbbb208a64a1db50ed83a4542d2"
+    "bytes": 1348808,
+    "sha256": "ddd1a3ff4bb3cc63dba2ab5f9be1fcfeba3f1aaa8ffb5c7671b31959681d476b"
   },
   "installer": "K99-Smart-Laundry-V2-Setup.2.exe",
   "workflowSHA256": "7c52848374584475bd373927217300893384190ed9b743e47ccad42bf74e813b",
@@ -15,14 +15,14 @@
     "installerProbeCompiled": true,
     "uninstallerProbeCompiled": true,
     "warningsAsErrors": true,
-    "applicationRuntimeBytesUnchanged": true,
+    "applicationRuntimeBytesUnchanged": false,
     "windowsActionsBuildVerified": false,
     "windowsInstallerBuilt": false,
     "windowsInstallationVerified": false,
     "allLocalUnitTests": {
       "commonJS": {
-        "tests": 363,
-        "pass": 363,
+        "tests": 384,
+        "pass": 384,
         "fail": 0,
         "cancelled": 0,
         "skipped": 0
@@ -34,15 +34,122 @@
         "cancelled": 0,
         "skipped": 0
       },
-      "total": 427,
-      "commonJSTestFiles": 52,
+      "total": 448,
+      "commonJSEntrypoints": 52,
+      "additionalCameraTestModulesIncluded": 2,
       "typescriptTestFiles": 18,
       "includesOuterReleaseDownloaderTests": true,
       "node": "v24.22.3",
       "platform": "linux",
       "testBypass": false
     },
-    "onlyChangedSourceFile": "artifacts/k99-windows/tests/customer-photo-library.test.cjs",
-    "zipCRCVerified": true
+    "zipCRCVerified": true,
+    "cameraBrowserVerification": {
+      "success": true,
+      "browser": "Chromium",
+      "syntheticCamera": true,
+      "physicalWindowsCameraVerified": false,
+      "results": [
+        {
+          "check": "OBS 없는 직접 FHD 초기화",
+          "pass": true,
+          "synthetic": true
+        },
+        {
+          "check": "밝기 +/- 및 슬라이더",
+          "pass": true
+        },
+        {
+          "check": "명암 / 대비 +/- 및 슬라이더",
+          "pass": true
+        },
+        {
+          "check": "색온도 / 화이트밸런스 +/- 및 슬라이더",
+          "pass": true
+        },
+        {
+          "check": "채도 +/- 및 슬라이더",
+          "pass": true
+        },
+        {
+          "check": "선명도 +/- 및 슬라이더",
+          "pass": true
+        },
+        {
+          "check": "보정 미리보기·저장 JPEG 픽셀 일치",
+          "pass": true,
+          "maxDifference": 0,
+          "width": 1920,
+          "height": 1080,
+          "jpeg": true
+        },
+        {
+          "check": "HD 실제 브라우저 프레임 전환",
+          "pass": true
+        },
+        {
+          "check": "FHD 실제 브라우저 프레임 전환",
+          "pass": true
+        },
+        {
+          "check": "2K 실제 브라우저 프레임 전환",
+          "pass": true
+        },
+        {
+          "check": "미지원 해상도 거절·기존 영상 보존",
+          "pass": true
+        },
+        {
+          "check": "다시 열기 후 6개 수동 설정 복원",
+          "pass": true
+        },
+        {
+          "check": "표준 복원·FHD 및 중립값 0 저장",
+          "pass": true
+        }
+      ],
+      "errors": []
+    },
+    "reactTypecheckPassed": true,
+    "desktopReactBundlePassed": true,
+    "webReactBundlePassed": true,
+    "browserTestHarnessExcludedFromProductBundles": true,
+    "cameraMode": "OBS-free direct UVC; FHD default; manual neutral software controls",
+    "hardwareManualExposureOrWhiteBalance": false,
+    "continuousAutomaticColorCalibration": false,
+    "hardwareCameraWindowsVerified": false,
+    "MJPGFormatPhysicallyVerified": false,
+    "workflowChanged": false,
+    "nsisAndPhotoLookupAndReleaseMediaPreserved": true,
+    "changedSourceFiles": [
+      "artifacts/k99-windows/electron/camera-color.test.cjs",
+      "artifacts/k99-windows/electron/camera-selection.test.cjs",
+      "artifacts/k99-windows/electron/main.cjs",
+      "artifacts/k99-windows/electron/obs-automation.cjs",
+      "artifacts/k99-windows/electron/obs-automation.test.cjs",
+      "artifacts/k99-windows/electron/preload.cjs",
+      "artifacts/k99-windows/src/CameraColorSliders.tsx",
+      "artifacts/k99-windows/src/EquipmentWorkspace.tsx",
+      "artifacts/k99-windows/src/MaintenanceWorkspace.tsx",
+      "artifacts/k99-windows/src/NativeDraftCamera.tsx",
+      "artifacts/k99-windows/src/ObsAutomationSettings.tsx",
+      "artifacts/k99-windows/src/camera-capture-controls.ts",
+      "artifacts/k99-windows/src/camera-color-chart.ts",
+      "artifacts/k99-windows/src/camera-color.ts",
+      "artifacts/k99-windows/src/camera-device.ts",
+      "artifacts/k99-windows/src/desktop-runtime.ts",
+      "artifacts/k99-windows/src/use-camera-color-preview.ts",
+      "docs/obs-camera-color.md",
+      "scripts/stage-windows-app.cjs",
+      "scripts/verify-camera-stream-browser.cjs",
+      "scripts/verify-windows-portable.cjs",
+      "artifacts/k99-windows/electron/camera-baseline-contract.test.cjs",
+      "artifacts/k99-windows/electron/manual-camera-resolution.test.cjs",
+      "artifacts/k99-windows/src/camera-manual.css",
+      "artifacts/k99-windows/src/camera-video.ts",
+      "artifacts/k99-windows/src/manual-camera-resolution.ts",
+      "artifacts/k99-windows/src/use-manual-camera.ts",
+      "artifacts/k99-windows/tests/manual-camera-browser.tsx"
+    ]
   }
 }
