@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   windows-installer:
-    if: ${{ inputs.usage_approved && github.event.repository.private == true }}
+    # if: ${{ inputs.usage_approved && github.event.repository.private == true }}
     runs-on: windows-2022
     timeout-minutes: 40
     env:
