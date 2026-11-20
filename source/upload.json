@@ -2,8 +2,8 @@
   "version": "2.4.6",
   "source": {
     "name": "K99-Windows-V1-0.3.0-Windows-Build-Kit.zip",
-    "bytes": 1345328,
-    "sha256": "cdd5db912577349d9e81af70fd644b9f0ae4d8edfa454e2f69dfc764e04dc933"
+    "bytes": 1345949,
+    "sha256": "9d07a3ef8abe09b7036ffb803d5fbf75594a3dbbb208a64a1db50ed83a4542d2"
   },
   "installer": "K99-Smart-Laundry-V2-Setup.2.exe",
   "workflowSHA256": "7c52848374584475bd373927217300893384190ed9b743e47ccad42bf74e813b",
@@ -18,6 +18,31 @@
     "applicationRuntimeBytesUnchanged": true,
     "windowsActionsBuildVerified": false,
     "windowsInstallerBuilt": false,
-    "windowsInstallationVerified": false
+    "windowsInstallationVerified": false,
+    "allLocalUnitTests": {
+      "commonJS": {
+        "tests": 363,
+        "pass": 363,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "typescript": {
+        "tests": 64,
+        "pass": 64,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "total": 427,
+      "commonJSTestFiles": 52,
+      "typescriptTestFiles": 18,
+      "includesOuterReleaseDownloaderTests": true,
+      "node": "v24.22.3",
+      "platform": "linux",
+      "testBypass": false
+    },
+    "onlyChangedSourceFile": "artifacts/k99-windows/tests/customer-photo-library.test.cjs",
+    "zipCRCVerified": true
   }
 }
