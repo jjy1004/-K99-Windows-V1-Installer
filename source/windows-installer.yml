@@ -1,0 +1,220 @@
+name: Build K99 Windows Installer
+
+# Uploading sources never starts a billed Windows job. Manual approval only.
+on:
+  workflow_dispatch:
+    inputs:
+      usage_approved:
+        description: "무료 잔여 사용량·저장 용량 또는 승인된 비용을 확인했으며 이번 빌드 실행을 승인합니다."
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: k99-windows-installer
+  cancel-in-progress: false
+
+jobs:
+  windows-installer:
+    if: ${{ inputs.usage_approved && github.event.repository.private == true }}
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - name: Checkout private build repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Check source ZIP checksum and extract
+        shell: pwsh
+        run: |
+          $zip = "source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip"
+          $expected = ((Get-Content "$zip.sha256").Trim() -split '\s+')[0]
+          $actual = (Get-FileHash $zip -Algorithm SHA256).Hash
+          if ($actual -ine $expected) { throw "Source ZIP checksum mismatch" }
+          Write-Output "K99 DIRECT-TSC WINDOWS-PATH-FIX; workflow commit=$env:GITHUB_SHA; source SHA256=$actual"
+          Expand-Archive -Path $zip -DestinationPath build
+          $version = (Get-Content "build/artifacts/k99-windows/package.json" -Raw | ConvertFrom-Json).version
+          if ($version -ne "2.4.6") { throw "Expected complete source version 2.4.6, found $version. Replace the source ZIP and its SHA-256 file together." }
+          "K99_SOURCE_SHA256=$actual" >> $env:GITHUB_ENV
+      - name: Prepare pnpm 10.26.1
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.26.1
+          run_install: false
+      - name: Prepare Node.js 24 x64
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+          architecture: x64
+      - name: Prepare Python 3.12 x64
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+      - name: Restore and verify original full HD videos from upload-safe parts
+        shell: pwsh
+        run: |
+          node build/scripts/restore-desktop-media.cjs source "$env:RUNNER_TEMP/k99-media"
+          if ($LASTEXITCODE -ne 0) { throw "Original media reconstruction failed. Check source/*.part files." }
+          Expand-Archive -Path "$env:RUNNER_TEMP/k99-media/customer-videos.zip" -DestinationPath build -Force
+      - name: Validate hosted C++ tools and Windows SDK
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path $vswhere)) { throw "VS2022 Build Tools discovery unavailable" }
+          $vs = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vs) { throw "MSVC v143 missing from Windows hosted image" }
+          $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvars64.bat"
+          if (!(Test-Path $vcvars)) { throw "C++ x64 toolchain missing" }
+          if (!(Test-Path "${env:ProgramFiles(x86)}\Windows Kits\10\Include")) { throw "Windows SDK missing" }
+          "npm_config_python=$((Get-Command python).Source)" >> $env:GITHUB_ENV
+          "npm_config_msvs_version=2022" >> $env:GITHUB_ENV
+          node --version
+          pnpm --version
+          python --version
+      - name: Install exact source dependencies
+        id: dependencies
+        working-directory: build
+        run: pnpm install --frozen-lockfile
+      - name: Test actual TypeScript inputs and Windows path regression
+        id: declaration_tests
+        working-directory: build
+        run: node --test scripts/tests/desktop-declarations.test.cjs
+      - name: Build and verify declarations directly with TypeScript (no package build script)
+        id: libraries
+        working-directory: build
+        run: node scripts/build-desktop-declarations.cjs
+      - name: Check React source types
+        id: react_types
+        working-directory: build
+        run: |
+          node scripts/build-desktop-declarations.cjs --verify-only
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm --filter @workspace/k99-windows run typecheck
+      - name: Verify safe UVC startup, software color and first-photo tag regression
+        working-directory: build
+        run: node --test artifacts/k99-windows/electron/camera-selection.test.cjs artifacts/k99-windows/electron/camera-color.test.cjs artifacts/k99-windows/electron/camera-viewport.test.cjs artifacts/k99-windows/electron/automatic-tag.test.cjs
+      - name: Test local storage and mocked equipment without any live service
+        working-directory: build
+        run: node --test lib/k99-local/storage.test.cjs lib/k99-local/customer-directory.test.cjs lib/k99-local/ledger-workbook.test.cjs lib/k99-local/unified-orders.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/field-operations.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/customer-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs scripts/tests/installer-command.test.cjs scripts/tests/desktop-media.test.cjs
+      - name: Test field UI business rules (defaults, notices, final QC and handover)
+        working-directory: build
+        run: node scripts/test-desktop-field-ui.cjs
+      - name: Compile installer and uninstaller customizations with NSIS
+        id: nsis_customization
+        working-directory: build
+        run: node scripts/verify-nsis-customization.cjs
+      - name: Verify all four local customer MP4 files are present
+        working-directory: build
+        run: node scripts/verify-desktop-media.cjs
+      - name: Audit Zero-Auth and customer photo lookup
+        working-directory: build
+        run: node --test artifacts/k99-windows/tests/zero-auth-audit.test.cjs artifacts/k99-windows/tests/customer-photo-library.test.cjs lib/k99-local/customer-autofill.test.cjs lib/k99-local/pickup-notices.test.cjs
+
+      - name: Build Windows x64 NSIS EXE
+        id: packaging
+        working-directory: build
+        run: pnpm --filter @workspace/k99-windows run desktop:dist
+      - name: Verify x64 payload and packaged SQLite Electron ABI
+        id: native_abi
+        working-directory: build
+        run: node scripts/verify-packaged-native.cjs
+      - name: Measure actual installer bytes and SHA-256
+        id: installer_hash
+        working-directory: build
+        run: node scripts/verify-windows-installer.cjs
+      - name: Prepare requested 2.4.6 installer filename and release evidence
+        id: requested_installer
+        working-directory: build
+        shell: pwsh
+        run: |
+          $folder = "generated-artifacts/windows-installer"
+          $canonical = Join-Path $folder "K99-Smart-Laundry-V2-Setup.exe"
+          $requested = Join-Path $folder "K99-Smart-Laundry-V2-Setup.2.exe"
+          $verified = Get-Content (Join-Path $folder "build-manifest.json") -Raw | ConvertFrom-Json
+          Copy-Item -LiteralPath $canonical -Destination $requested -Force
+          $hash = (Get-FileHash -LiteralPath $requested -Algorithm SHA256).Hash.ToLowerInvariant()
+          $bytes = (Get-Item -LiteralPath $requested).Length
+          if ($hash -ne $verified.sha256 -or $bytes -ne $verified.bytes) { throw "Requested installer differs from the verified Windows build." }
+          "$hash  K99-Smart-Laundry-V2-Setup.2.exe" | Set-Content -LiteralPath "$requested.sha256" -Encoding ascii
+          @{
+            version = "2.4.6"
+            filename = "K99-Smart-Laundry-V2-Setup.2.exe"
+            bytes = $bytes
+            sha256 = $hash
+            sourceSHA256 = $env:K99_SOURCE_SHA256.ToLowerInvariant()
+            commit = $env:GITHUB_SHA
+            run = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+            platform = "win32"
+            architecture = "x64"
+            windowsInstallationVerified = $false
+            physicalCameraVerified = $false
+          } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $folder "installer-release.json") -Encoding utf8
+          "## K99 Windows 2.4.6" >> $env:GITHUB_STEP_SUMMARY
+          "- 파일: K99-Smart-Laundry-V2-Setup.2.exe" >> $env:GITHUB_STEP_SUMMARY
+          "- 크기: $bytes 바이트" >> $env:GITHUB_STEP_SUMMARY
+          "- SHA-256: $hash" >> $env:GITHUB_STEP_SUMMARY
+          "- 실제 Windows 설치 및 SU200MB 실물 검증은 별도입니다." >> $env:GITHUB_STEP_SUMMARY
+      - name: Upload verified EXE and evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: K99-Laundry-V2-2.4.6-Windows-x64
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/generated-artifacts/windows-installer/K99-Smart-Laundry-V2-Setup.2.exe
+            build/generated-artifacts/windows-installer/K99-Smart-Laundry-V2-Setup.2.exe.sha256
+            build/generated-artifacts/windows-installer/installer-release.json
+            build/generated-artifacts/windows-installer/build-manifest.json
+            build/generated-artifacts/windows-installer/electron-abi-result.json
+      - name: Explain failed stage and repair target
+        if: failure()
+        shell: pwsh
+        env:
+          DEPENDENCIES: ${{ steps.dependencies.outcome }}
+          DECLARATION_TESTS: ${{ steps.declaration_tests.outcome }}
+          LIBRARIES: ${{ steps.libraries.outcome }}
+          REACT_TYPES: ${{ steps.react_types.outcome }}
+          PACKAGING: ${{ steps.packaging.outcome }}
+          NSIS_CUSTOMIZATION: ${{ steps.nsis_customization.outcome }}
+          NATIVE_ABI: ${{ steps.native_abi.outcome }}
+          INSTALLER_HASH: ${{ steps.installer_hash.outcome }}
+        run: |
+          $checks = @(
+            @("dependencies", $env:DEPENDENCIES, "pnpm-lock.yaml / dependency installation"),
+            @("declaration_tests", $env:DECLARATION_TESTS, "scripts/tests/desktop-declarations.test.cjs / Windows input canonicalization"),
+            @("libraries", $env:LIBRARIES, "scripts/build-desktop-declarations.cjs; lib/api-client-react/tsconfig.json, lib/api-zod/tsconfig.json; emitted dist/*.d.ts"),
+            @("react_types", $env:REACT_TYPES, "artifacts/k99-windows/tsconfig.json and file:line in TypeScript log"),
+            @("packaging", $env:PACKAGING, "scripts/build-windows-installer.cjs stage markers; electron-builder.cjs / installer/data-preservation.nsh"),
+            @("nsis_customization", $env:NSIS_CUSTOMIZATION, "installer/data-preservation.nsh / generated-artifacts/nsis-customization-check logs"),
+            @("native_abi", $env:NATIVE_ABI, "scripts/verify-packaged-native.cjs / packaged better-sqlite3.node"),
+            @("installer_hash", $env:INSTALLER_HASH, "scripts/verify-windows-installer.cjs / EXE and manifest")
+          )
+          "## K99 installer failure diagnosis" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($check in $checks) {
+            "- $($check[0]): $($check[1]); inspect $($check[2])" >> $env:GITHUB_STEP_SUMMARY
+            if ($check[1] -eq "failure") {
+              Write-Output "::error title=K99 $($check[0]) failed::Inspect $($check[2]); original compiler/builder error is in this step's full log."
+            }
+          }
+          "If all stages above were skipped, inspect checkout, ZIP checksum and existing tool preparation steps." >> $env:GITHUB_STEP_SUMMARY
+      - name: Preserve builder diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: K99-builder-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            build/generated-artifacts/windows-installer/builder-debug.yml
+            build/generated-artifacts/windows-installer/builder-effective-config.yaml
+            build/generated-artifacts/windows-installer/packaging-stages.log
+            build/generated-artifacts/windows-installer/packaging-console.log
+            build/generated-artifacts/nsis-customization-check/*.log
+            build/generated-artifacts/nsis-customization-check/report.json
