@@ -119,7 +119,12 @@ jobs:
       - name: Compile installer and uninstaller customizations with NSIS
         id: nsis_customization
         working-directory: build
-        run: node scripts/verify-nsis-customization.cjs
+        shell: pwsh
+        run: |
+          node --test scripts/tests/nsis-customization.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw "NSIS include path regression tests failed." }
+          node scripts/verify-nsis-customization.cjs
+          if ($LASTEXITCODE -ne 0) { throw "NSIS probe compile failed. Inspect the printed include/cwd/script paths and uploaded .nsi inputs." }
       - name: Verify all four local customer MP4 files are present
         working-directory: build
         run: node scripts/verify-desktop-media.cjs
@@ -231,4 +236,5 @@ jobs:
             build/generated-artifacts/windows-installer/packaging-stages.log
             build/generated-artifacts/windows-installer/packaging-console.log
             build/generated-artifacts/nsis-customization-check/*.log
+            build/generated-artifacts/nsis-customization-check/*.nsi
             build/generated-artifacts/nsis-customization-check/report.json

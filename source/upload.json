@@ -1,29 +1,23 @@
 {
-  "patchId": "V2-LOCAL-PHOTO-LOAD-AI",
+  "version": "2.4.6",
   "source": {
     "name": "K99-Windows-V1-0.3.0-Windows-Build-Kit.zip",
-    "bytes": 1059341,
-    "sha256": "0372aca5895272ba78fe59f6ce97299bd9a8f19d1651469fac4aa2468639e8ad"
+    "bytes": 1345328,
+    "sha256": "cdd5db912577349d9e81af70fd644b9f0ae4d8edfa454e2f69dfc764e04dc933"
   },
+  "installer": "K99-Smart-Laundry-V2-Setup.2.exe",
+  "workflowSHA256": "7c52848374584475bd373927217300893384190ed9b743e47ccad42bf74e813b",
+  "mediaSHA256": "31d5bd24d20bcfd44c627df3f360d0a84dcfdd36737f351de42d397e493184d4",
   "verification": {
-    "patchId": "V2-LOCAL-PHOTO-LOAD-AI",
-    "typecheck": true,
-    "reactDesktopBuild": true,
-    "tests": 200,
-    "typescriptTests": 62,
-    "cjsTests": 138,
-    "stagedGatewayIncluded": true,
-    "canonicalHashVerificationRetained": true,
-    "webSecurityDisabled": false,
-    "wholeDiskStaticServing": false,
-    "rawFileUrlsRendered": false,
-    "databaseSchemaChanged": false,
-    "corePricePrinterOrderFilesChangedThisPatch": false,
-    "model": "gemini-3.1-flash-lite",
-    "realGoogleCallThisPatch": false,
-    "aiAndPrinterTests": "injected adapters, real temporary SQLite/photo files/loopback HTTP",
-    "windowsDDriveOrElectronEngineVerified": false,
-    "physicalPrinterVerified": false,
-    "windowsInstallerBuilt": false
+    "nsisPathRegressionTests": 4,
+    "existingInstallerConfigTests": 15,
+    "probeCompilerPlatform": "linux",
+    "installerProbeCompiled": true,
+    "uninstallerProbeCompiled": true,
+    "warningsAsErrors": true,
+    "applicationRuntimeBytesUnchanged": true,
+    "windowsActionsBuildVerified": false,
+    "windowsInstallerBuilt": false,
+    "windowsInstallationVerified": false
   }
 }
