@@ -57,6 +57,16 @@ jobs:
         with:
           python-version: "3.12"
           architecture: x64
+      - name: Test release media downloader integrity and failure handling
+        id: release_media_tests
+        shell: pwsh
+        run: node --test scripts/tests/release-media-download.test.cjs
+      - name: Download and verify original video parts from pinned GitHub release
+        id: release_media
+        shell: pwsh
+        run: |
+          node scripts/download-release-media.cjs source source/customer-videos.release.json
+          if ($LASTEXITCODE -ne 0) { throw "Original media download failed. Inspect release assets and source/customer-videos.release.json." }
       - name: Restore and verify original full HD videos from upload-safe parts
         shell: pwsh
         run: |
@@ -179,6 +189,8 @@ jobs:
         env:
           DEPENDENCIES: ${{ steps.dependencies.outcome }}
           DECLARATION_TESTS: ${{ steps.declaration_tests.outcome }}
+          RELEASE_MEDIA_TESTS: ${{ steps.release_media_tests.outcome }}
+          RELEASE_MEDIA: ${{ steps.release_media.outcome }}
           LIBRARIES: ${{ steps.libraries.outcome }}
           REACT_TYPES: ${{ steps.react_types.outcome }}
           PACKAGING: ${{ steps.packaging.outcome }}
@@ -187,6 +199,8 @@ jobs:
           INSTALLER_HASH: ${{ steps.installer_hash.outcome }}
         run: |
           $checks = @(
+            @("release_media_tests", $env:RELEASE_MEDIA_TESTS, "scripts/tests/release-media-download.test.cjs"),
+            @("release_media", $env:RELEASE_MEDIA, "source/customer-videos.release.json / published GitHub release assets / SHA-256 validation"),
             @("dependencies", $env:DEPENDENCIES, "pnpm-lock.yaml / dependency installation"),
             @("declaration_tests", $env:DECLARATION_TESTS, "scripts/tests/desktop-declarations.test.cjs / Windows input canonicalization"),
             @("libraries", $env:LIBRARIES, "scripts/build-desktop-declarations.cjs; lib/api-client-react/tsconfig.json, lib/api-zod/tsconfig.json; emitted dist/*.d.ts"),
