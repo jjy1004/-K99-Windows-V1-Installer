@@ -1,4 +1,12 @@
-# K99 Laundry V2 2.4.6 — 최신 통합 소스·Windows 설치 빌더
+# K99 Laundry V2 2.4.7 — 서비스 모듈 패키징 긴급 수정
+
+2.4.6 최종 ASAR에서 `electron/services/autoMessenger.js`와 CommonJS 설정 파일이 빠지는 필터 오류를 수정했습니다.
+접수·메시지 구현·DB·카메라 코드는 변경하지 않습니다. 기존 앱 ID와 사용자 데이터 위치도 유지합니다.
+
+현재 정식 소스의 실제 참조는 `./services/autoMessenger.js`입니다. `../services/smsMessenger.js`라는 빈 대체 모듈을 만들지 않습니다.
+ASAR 내부의 모든 앱 상대 require를 검사하므로 그와 같은 미해결 참조도 빌드를 통과할 수 없습니다.
+최종 Windows Electron에서 ASAR의 실제 메인·서비스를 불러오는 검사를 SQLite ABI 검사에 추가했습니다.
+이 검사는 Electron OS/UI 경계만 대체하며 실제 창 부팅·매장 설치·장비 검증과는 구분합니다.
 
 ## 이번 통합본
 
