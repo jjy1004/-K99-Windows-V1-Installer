@@ -203,9 +203,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "GitHub draft release creation failed." }
           gh release upload $tag "$exe" "$exe.sha256" "$folder/installer-release.json" "$folder/build-manifest.json" "$folder/electron-abi-result.json" --repo "$env:GITHUB_REPOSITORY"
           if ($LASTEXITCODE -ne 0) { throw "Release upload failed; draft remains unpublished and latest is unchanged." }
-          $remote = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" | ConvertFrom-Json
-          if ($LASTEXITCODE -ne 0) { throw "Cannot verify uploaded release metadata." }
-          $asset = @($remote.assets | Where-Object { $_.name -eq "K99-Smart-Laundry-V2-Setup.exe" })
+          # The tag lookup endpoint exposes published releases, not this draft.
+          $drafts = gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw "Cannot list uploaded draft release metadata." }
+          $remote = @($drafts | Where-Object { $_.tag_name -eq $tag -and $_.target_commitish -eq $env:GITHUB_SHA -and $_.draft -eq $true })
+          if ($remote.Count -ne 1) { throw "Expected exactly one draft for this tag and source commit." }
+          $asset = @($remote[0].assets | Where-Object { $_.name -eq "K99-Smart-Laundry-V2-Setup.exe" })
           if ($asset.Count -ne 1 -or $asset[0].state -ne "uploaded" -or $asset[0].size -ne $manifest.bytes) { throw "Uploaded release asset is missing, incomplete or has the wrong byte count." }
           if ($asset[0].digest -and $asset[0].digest -ne "sha256:$hash") { throw "GitHub release SHA-256 differs from the verified installer." }
           gh release edit $tag --repo "$env:GITHUB_REPOSITORY" --draft=false --latest
