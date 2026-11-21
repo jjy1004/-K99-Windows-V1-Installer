@@ -1,4 +1,18 @@
-# K99 Laundry V2 2.4.7 — 서비스 모듈 패키징 긴급 수정
+# K99 Laundry V2 2.4.9 — 간편 고객 안내와 접수 연동
+
+이번 소스는 Iriun 전용 촬영창·발판·사진 저장·결제·기존 고객 DB 및 프린터 기능을 유지합니다.
+특이사항 모달, 수거 고지 대상 선택, 세탁 전 과정 안내, 간편 QR 문자·카카오톡 복사 발송,
+휴대폰 글 자동 삽입과 운영시간·배송·금액별 혜택 안내를 포함합니다.
+QR 생성·문구 복사·프로그램 열기는 실제 발송 완료를 뜻하지 않습니다.
+
+`source/`의 ZIP과 SHA-256 및 `upload.json`은 함께 교체합니다.
+영상은 기존 `customer-videos.release.json` 연결을 유지합니다.
+Windows 설치본은 Actions의 기존 Windows 빌드를 실행하여 생성하며,
+게시된 최신 설치 파일은 아래 고정 경로에서 받습니다.
+
+https://github.com/jjy1004/-K99-Windows-V1-Installer/releases/latest/download/K99-Smart-Laundry-V2-Setup.exe
+
+## 이전 패키징 보호 조치
 
 2.4.6 최종 ASAR에서 `electron/services/autoMessenger.js`와 CommonJS 설정 파일이 빠지는 필터 오류를 수정했습니다.
 접수·메시지 구현·DB·카메라 코드는 변경하지 않습니다. 기존 앱 ID와 사용자 데이터 위치도 유지합니다.
