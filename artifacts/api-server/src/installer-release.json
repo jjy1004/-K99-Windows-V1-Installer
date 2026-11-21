@@ -1,0 +1,15 @@
+{
+  "filename": "K99-Smart-Laundry-V2-Setup.exe",
+  "installerChannel": "github-latest",
+  "version": "2.4.3",
+  "bucketId": "replit-objstore-8c9452cd-a5d3-4d75-947a-a832e41f1423",
+  "bytes": 256795575,
+  "sha256": "35acb436f879ab3e1f2d5599fd526da2a7b4b6bc53733af3607bdbe5240abe1b",
+  "objectName": "releases/35acb436f879ab3e1f2d5599fd526da2a7b4b6bc53733af3607bdbe5240abe1b/K99-Smart-Laundry-V2-Setup.exe",
+  "portable": {
+    "filename": "K99-Laundry-V2-2.4.3-win-unpacked.zip",
+    "bytes": 328020828,
+    "sha256": "412d11318ba062c73e53fc45d15036997ab78cebbf329d542e50e41349c49d93",
+    "objectName": "releases/412d11318ba062c73e53fc45d15036997ab78cebbf329d542e50e41349c49d93/K99-Laundry-V2-2.4.3-win-unpacked.zip"
+  }
+}

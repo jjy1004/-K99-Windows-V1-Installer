@@ -1,4 +1,19 @@
-# K99 V2 — 로컬 사진 로드·케어라벨 연계 수정본
+# K99 Laundry V2 2.4.6 — 최신 통합 소스·Windows 설치 빌더
+
+## 이번 통합본
+
+- 고객 특이사항·매장 맞춤 설정·알림 편집/모바일 수신·카메라별 화질 분기·스마트폰 연결 도우미를 포함합니다.
+- 실제 빌드 입력은 `source/K99-Windows-V1-0.3.0-Windows-Build-Kit.zip`과 그 `.sha256`입니다. 루트에 남아 있는 과거 동명 ZIP은 사용하지 않습니다.
+- 원본 영상의 별도 릴리스 연결, NSIS 검사, 고객 사진 조회 검사는 보존합니다. 소스 SHA-256 검사를 활성화하며 Windows 실행 승인이 있어야 빌드를 시작합니다.
+- 검증된 EXE는 초안 업로드·크기 확인 후 정식 GitHub Release로 게시합니다. Artifact 저장 한도와 별개입니다.
+- 최신 설치 파일: https://github.com/jjy1004/-K99-Windows-V1-Installer/releases/latest/download/K99-Smart-Laundry-V2-Setup.exe
+- 최초 새 빌드 성공·릴리스 게시 전까지 위 `Setup.exe` 링크의 준비 완료를 보장하지 않습니다. 실제 매장 PC·카메라·프린터 검증과 CI 성공은 별개입니다.
+- 별도 AI 처방 웹앱의 설치 버튼은 과거 `v2.4.5` 고정 주소를 위 최신 주소로 바꿔 재게시해야 합니다. 자세한 절차: `docs/windows-latest-installer-download.md`.
+- `artifacts/api-server/src`의 다운로드 수정본은 Replit 웹 서버 재게시용입니다. Actions의 Windows EXE 빌드가 웹 서버를 자동으로 배포하지는 않습니다.
+
+---
+
+## 이전 소스 설명
 
 기존 k99:// 사진 프로토콜을 재사용하여 일부 화면의 옛 도우미 주소/탭 세션 의존을 제거했습니다. 등록된 주문·의류의 사진만 Native IPC로 연결하며, 과거 절대 경로는 허용된 매장 사진 루트 안에서만 읽습니다. D 드라이브 전체 정적 서빙이나 webSecurity 해제는 없습니다.
 

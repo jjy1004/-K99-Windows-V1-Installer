@@ -1,6 +1,6 @@
 name: Build K99 Windows Installer
 
-# Uploading sources never starts a billed Windows job. Manual approval only.
+# Source uploads alone do not start Windows jobs. Dispatch with explicit approval.
 on:
   workflow_dispatch:
     inputs:
@@ -19,7 +19,9 @@ concurrency:
 
 jobs:
   windows-installer:
-    if: ${{ inputs.usage_approved && github.event.repository.private == true }}
+    if: ${{ inputs.usage_approved }}
+    permissions:
+      contents: write
     runs-on: windows-2022
     timeout-minutes: 40
     env:
@@ -57,6 +59,16 @@ jobs:
         with:
           python-version: "3.12"
           architecture: x64
+      - name: Test release media downloader integrity and failure handling
+        id: release_media_tests
+        shell: pwsh
+        run: node --test scripts/tests/release-media-download.test.cjs
+      - name: Download and verify original video parts from pinned GitHub release
+        id: release_media
+        shell: pwsh
+        run: |
+          node scripts/download-release-media.cjs source source/customer-videos.release.json
+          if ($LASTEXITCODE -ne 0) { throw "Original media download failed. Inspect release assets and source/customer-videos.release.json." }
       - name: Restore and verify original full HD videos from upload-safe parts
         shell: pwsh
         run: |
@@ -100,6 +112,9 @@ jobs:
       - name: Verify safe UVC startup, software color and first-photo tag regression
         working-directory: build
         run: node --test artifacts/k99-windows/electron/camera-selection.test.cjs artifacts/k99-windows/electron/camera-color.test.cjs artifacts/k99-windows/electron/camera-viewport.test.cjs artifacts/k99-windows/electron/automatic-tag.test.cjs
+      - name: Test customer notices, staff-only notes, device helper and pedal modal isolation
+        working-directory: build
+        run: node --test lib/k99-local/customer-notices.test.cjs lib/k99-local/customer-special-note.test.cjs artifacts/k99-windows/tests/customer-notice-native.test.cjs artifacts/k99-windows/electron/smartphone-camera.test.cjs artifacts/k99-windows/electron/franchise.test.cjs
       - name: Test local storage and mocked equipment without any live service
         working-directory: build
         run: node --test lib/k99-local/storage.test.cjs lib/k99-local/customer-directory.test.cjs lib/k99-local/ledger-workbook.test.cjs lib/k99-local/unified-orders.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/field-operations.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/customer-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs scripts/tests/installer-command.test.cjs scripts/tests/desktop-media.test.cjs
@@ -109,7 +124,12 @@ jobs:
       - name: Compile installer and uninstaller customizations with NSIS
         id: nsis_customization
         working-directory: build
-        run: node scripts/verify-nsis-customization.cjs
+        shell: pwsh
+        run: |
+          node --test scripts/tests/nsis-customization.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw "NSIS include path regression tests failed." }
+          node scripts/verify-nsis-customization.cjs
+          if ($LASTEXITCODE -ne 0) { throw "NSIS probe compile failed. Inspect the printed include/cwd/script paths and uploaded .nsi inputs." }
       - name: Verify all four local customer MP4 files are present
         working-directory: build
         run: node scripts/verify-desktop-media.cjs
@@ -145,7 +165,8 @@ jobs:
           "$hash  K99-Smart-Laundry-V2-Setup.2.exe" | Set-Content -LiteralPath "$requested.sha256" -Encoding ascii
           @{
             version = "2.4.6"
-            filename = "K99-Smart-Laundry-V2-Setup.2.exe"
+            filename = "K99-Smart-Laundry-V2-Setup.exe"
+            legacyAlias = "K99-Smart-Laundry-V2-Setup.2.exe"
             bytes = $bytes
             sha256 = $hash
             sourceSHA256 = $env:K99_SOURCE_SHA256.ToLowerInvariant()
@@ -161,7 +182,39 @@ jobs:
           "- 크기: $bytes 바이트" >> $env:GITHUB_STEP_SUMMARY
           "- SHA-256: $hash" >> $env:GITHUB_STEP_SUMMARY
           "- 실제 Windows 설치 및 SU200MB 실물 검증은 별도입니다." >> $env:GITHUB_STEP_SUMMARY
+      - name: Publish verified canonical installer to latest GitHub release
+        id: public_release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $head = gh api "repos/$env:GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha'
+          if ($LASTEXITCODE -ne 0 -or $head.Trim() -ne $env:GITHUB_SHA) { throw "Source main has changed; refusing to replace latest with an outdated build." }
+          $folder = "build/generated-artifacts/windows-installer"
+          $exe = Join-Path $folder "K99-Smart-Laundry-V2-Setup.exe"
+          $manifest = Get-Content (Join-Path $folder "build-manifest.json") -Raw | ConvertFrom-Json
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $manifest.sha256 -or (Get-Item $exe).Length -ne $manifest.bytes) { throw "Final release bytes do not match verified build manifest." }
+          "$hash  K99-Smart-Laundry-V2-Setup.exe" | Set-Content "$exe.sha256" -Encoding ascii
+          $tag = "v2.4.6-build.$env:GITHUB_RUN_NUMBER.$env:GITHUB_RUN_ATTEMPT"
+          $notes = "Windows x64 verified package. Source: $env:GITHUB_SHA. Actual store-PC installation, camera and printer validation remain separate."
+          gh release create $tag --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "K99 Laundry V2 2.4.6 build $env:GITHUB_RUN_NUMBER" --notes "$notes" --draft
+          if ($LASTEXITCODE -ne 0) { throw "GitHub draft release creation failed." }
+          gh release upload $tag "$exe" "$exe.sha256" "$folder/installer-release.json" "$folder/build-manifest.json" "$folder/electron-abi-result.json" --repo "$env:GITHUB_REPOSITORY"
+          if ($LASTEXITCODE -ne 0) { throw "Release upload failed; draft remains unpublished and latest is unchanged." }
+          $remote = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw "Cannot verify uploaded release metadata." }
+          $asset = @($remote.assets | Where-Object { $_.name -eq "K99-Smart-Laundry-V2-Setup.exe" })
+          if ($asset.Count -ne 1 -or $asset[0].state -ne "uploaded" -or $asset[0].size -ne $manifest.bytes) { throw "Uploaded release asset is missing, incomplete or has the wrong byte count." }
+          if ($asset[0].digest -and $asset[0].digest -ne "sha256:$hash") { throw "GitHub release SHA-256 differs from the verified installer." }
+          gh release edit $tag --repo "$env:GITHUB_REPOSITORY" --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw "Release publish failed; latest download must not be reported as updated." }
+          $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/K99-Smart-Laundry-V2-Setup.exe"
+          "- 최신 설치 파일: $url" >> $env:GITHUB_STEP_SUMMARY
+          "- SHA-256: $hash" >> $env:GITHUB_STEP_SUMMARY
       - name: Upload verified EXE and evidence
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: K99-Laundry-V2-2.4.6-Windows-x64
@@ -179,6 +232,8 @@ jobs:
         env:
           DEPENDENCIES: ${{ steps.dependencies.outcome }}
           DECLARATION_TESTS: ${{ steps.declaration_tests.outcome }}
+          RELEASE_MEDIA_TESTS: ${{ steps.release_media_tests.outcome }}
+          RELEASE_MEDIA: ${{ steps.release_media.outcome }}
           LIBRARIES: ${{ steps.libraries.outcome }}
           REACT_TYPES: ${{ steps.react_types.outcome }}
           PACKAGING: ${{ steps.packaging.outcome }}
@@ -189,6 +244,8 @@ jobs:
           $checks = @(
             @("dependencies", $env:DEPENDENCIES, "pnpm-lock.yaml / dependency installation"),
             @("declaration_tests", $env:DECLARATION_TESTS, "scripts/tests/desktop-declarations.test.cjs / Windows input canonicalization"),
+            @("release_media_tests", $env:RELEASE_MEDIA_TESTS, "scripts/tests/release-media-download.test.cjs"),
+            @("release_media", $env:RELEASE_MEDIA, "source/customer-videos.release.json / published GitHub release assets / SHA-256 validation"),
             @("libraries", $env:LIBRARIES, "scripts/build-desktop-declarations.cjs; lib/api-client-react/tsconfig.json, lib/api-zod/tsconfig.json; emitted dist/*.d.ts"),
             @("react_types", $env:REACT_TYPES, "artifacts/k99-windows/tsconfig.json and file:line in TypeScript log"),
             @("packaging", $env:PACKAGING, "scripts/build-windows-installer.cjs stage markers; electron-builder.cjs / installer/data-preservation.nsh"),
@@ -217,4 +274,5 @@ jobs:
             build/generated-artifacts/windows-installer/packaging-stages.log
             build/generated-artifacts/windows-installer/packaging-console.log
             build/generated-artifacts/nsis-customization-check/*.log
+            build/generated-artifacts/nsis-customization-check/*.nsi
             build/generated-artifacts/nsis-customization-check/report.json
