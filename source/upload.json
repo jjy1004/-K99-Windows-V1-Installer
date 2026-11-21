@@ -2,16 +2,19 @@
   "version": "2.4.9",
   "source": {
     "name": "K99-Windows-V1-0.3.0-Windows-Build-Kit.zip",
-    "bytes": 1474864,
-    "sha256": "369af67837382b924a3cbb0cf3dfdb42caef8826f82af6f3e834d4ca03b7f692"
+    "bytes": 1479657,
+    "sha256": "0069cc9c3206948f0473c7dbf30555674bb40a95e70229986a077a9645630a05"
   },
   "installer": "K99-Smart-Laundry-V2-Setup.exe",
   "windowsBuildVerified": false,
   "physicalCameraVerified": false,
   "googleContactsIncluded": false,
-  "regressionTests": 361,
-  "workflowSHA256": "57333252e27512f6bbb387a093495c337377cadb697263e2fbd6a8f84769116d",
+  "regressionTests": 367,
+  "workflowSHA256": "5d6f9372bee3f203a14b65debe09c00060fed4d2f10ed13353295004e1be99b7",
   "mediaSHA256": "31d5bd24d20bcfd44c627df3f360d0a84dcfdd36737f351de42d397e493184d4",
   "mediaReleaseSHA256": "370d6abac37fe7ad6f6ef086b0bec969e4f2265634044252ac69b4cd5e019f0c",
-  "extractedSourceRegressionVerified": true
+  "extractedSourceRegressionVerified": true,
+  "presentationCustomerSeedIncluded": true,
+  "presentationReceiptUiVerified": true,
+  "smsQrRoundTripCases": 3
 }

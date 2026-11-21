@@ -117,7 +117,7 @@ jobs:
         run: node --test artifacts/k99-windows/electron/camera-selection.test.cjs artifacts/k99-windows/electron/camera-color.test.cjs artifacts/k99-windows/electron/camera-viewport.test.cjs artifacts/k99-windows/electron/automatic-tag.test.cjs
       - name: Test customer notices, staff-only notes, device helper and pedal modal isolation
         working-directory: build
-        run: node --test lib/k99-local/customer-notices.test.cjs lib/k99-local/customer-special-note.test.cjs artifacts/k99-windows/tests/customer-notice-native.test.cjs artifacts/k99-windows/electron/smartphone-camera.test.cjs artifacts/k99-windows/electron/franchise.test.cjs
+        run: node --test lib/k99-local/customer-notices.test.cjs lib/k99-local/customer-special-note.test.cjs lib/k99-local/presentation-customer.test.cjs artifacts/k99-windows/tests/customer-notice-native.test.cjs artifacts/k99-windows/electron/smartphone-camera.test.cjs artifacts/k99-windows/electron/franchise.test.cjs
       - name: Test local storage and mocked equipment without any live service
         working-directory: build
         run: node --test lib/k99-local/storage.test.cjs lib/k99-local/customer-directory.test.cjs lib/k99-local/ledger-workbook.test.cjs lib/k99-local/unified-orders.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/field-operations.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/customer-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs scripts/tests/installer-command.test.cjs scripts/tests/desktop-media.test.cjs
