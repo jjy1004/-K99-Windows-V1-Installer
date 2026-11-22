@@ -118,6 +118,19 @@ jobs:
       - name: Test customer notices, staff-only notes, device helper and pedal modal isolation
         working-directory: build
         run: node --test lib/k99-local/customer-notices.test.cjs lib/k99-local/customer-special-note.test.cjs lib/k99-local/presentation-customer.test.cjs artifacts/k99-windows/tests/customer-notice-native.test.cjs artifacts/k99-windows/electron/smartphone-camera.test.cjs artifacts/k99-windows/electron/franchise.test.cjs
+      - name: Parse Windows messenger scripts without opening or sending messages
+        working-directory: build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sources = node -e "const s=require('./artifacts/k99-windows/electron/services/autoMessenger.js');process.stdout.write(JSON.stringify([s.SCRIPT,s.PHONE_STATUS_SCRIPT]));"
+          if ($LASTEXITCODE -ne 0) { throw "Cannot load packaged messenger scripts." }
+          foreach ($source in ($sources | ConvertFrom-Json)) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseInput($source, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw ($errors | ForEach-Object { $_.Message } | Out-String) }
+          }
       - name: Test local storage and mocked equipment without any live service
         working-directory: build
         run: node --test lib/k99-local/storage.test.cjs lib/k99-local/customer-directory.test.cjs lib/k99-local/ledger-workbook.test.cjs lib/k99-local/unified-orders.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/field-operations.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/customer-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs scripts/tests/installer-command.test.cjs scripts/tests/desktop-media.test.cjs
