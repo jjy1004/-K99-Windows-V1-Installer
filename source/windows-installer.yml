@@ -156,7 +156,7 @@ jobs:
       - name: Test automatic updates and SQLite preservation before installer build
         id: updater_tests
         working-directory: build
-        run: node --test artifacts/k99-windows/tests/auto-update.test.cjs artifacts/k99-windows/tests/update-notice.test.cjs
+        run: node --test artifacts/k99-windows/tests/auto-update.test.cjs artifacts/k99-windows/tests/update-notice.test.cjs lib/k99-local/catalog-management.test.cjs
       - name: Build Windows x64 NSIS EXE
         id: packaging
         working-directory: build
