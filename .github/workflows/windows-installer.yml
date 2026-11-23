@@ -42,7 +42,10 @@ jobs:
           Write-Output "K99 DIRECT-TSC WINDOWS-PATH-FIX; workflow commit=$env:GITHUB_SHA; source SHA256=$actual"
           Expand-Archive -Path $zip -DestinationPath build
           $version = (Get-Content "build/artifacts/k99-windows/package.json" -Raw | ConvertFrom-Json).version
-          if ($version -ne "2.4.11") { throw "Expected complete source version 2.4.11, found $version. Replace the source ZIP and its SHA-256 file together." }
+          $upload = Get-Content "source/upload.json" -Raw | ConvertFrom-Json
+          $expectedVersion = $upload.version
+          if ($expectedVersion -notmatch '^\d+\.\d+\.\d+$' -or $version -ne $expectedVersion) { throw "Source version mismatch: upload.json=$expectedVersion, extracted package=$version. Replace the ZIP, SHA-256 and upload.json together." }
+          if ($upload.source.sha256 -ine $actual -or $upload.source.bytes -ne (Get-Item $zip).Length) { throw "Source manifest checksum or byte count mismatch." }
           "K99_SOURCE_SHA256=$actual" >> $env:GITHUB_ENV
       - name: Prepare pnpm 10.26.1
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -111,7 +114,7 @@ jobs:
           pnpm --filter @workspace/k99-windows run typecheck
       - name: Reproduce missing service and test final ASAR filter
         working-directory: build
-        run: node --test scripts/tests/packaged-main-audit.test.cjs
+        run: node --test scripts/tests/packaged-main-audit.test.cjs scripts/tests/source-kit-version.test.cjs
       - name: Verify Iriun-only camera, legacy equipment and first-photo tag regression
         working-directory: build
         run: node --test artifacts/k99-windows/electron/camera-selection.test.cjs artifacts/k99-windows/electron/camera-color.test.cjs artifacts/k99-windows/electron/camera-viewport.test.cjs artifacts/k99-windows/electron/automatic-tag.test.cjs
