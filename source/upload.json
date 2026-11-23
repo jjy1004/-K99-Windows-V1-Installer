@@ -1,25 +1,13 @@
 {
-  "version": "2.4.9",
+  "version": "2.4.11",
   "source": {
-    "filename": "K99-Windows-V1-0.3.0-Windows-Build-Kit.zip",
-    "bytes": 1485434,
-    "sha256": "e5228ff72ae42b718018f1f3dfd48c1f67990af73e5e6fcb56c624ca85852976"
+    "name": "K99-Windows-V1-0.3.0-Windows-Build-Kit.zip",
+    "bytes": 1501388,
+    "sha256": "0b8a77f36da1c56be52f0041daea6fb17b121d0576916359b05c9ddfdfa65594"
   },
   "installer": "K99-Smart-Laundry-V2-Setup.exe",
   "windowsBuildVerified": false,
   "physicalCameraVerified": false,
-  "googleContactsIncluded": false,
-  "regressionTests": 373,
-  "workflowSHA256": "544661a85204f940d2bc8f7d52c4ac6ee3c1aa51019325cc0a736acd8fcaf954",
-  "mediaSHA256": "31d5bd24d20bcfd44c627df3f360d0a84dcfdd36737f351de42d397e493184d4",
-  "mediaReleaseSHA256": "370d6abac37fe7ad6f6ef086b0bec969e4f2265634044252ac69b4cd5e019f0c",
-  "extractedSourceRegressionVerified": true,
-  "presentationCustomerSeedIncluded": true,
-  "presentationReceiptUiVerified": true,
-  "smsQrRoundTripCases": 3,
-  "browserAuditSteps": 20,
-  "nativeWindowsImeVerified": false,
-  "phoneLinkPhysicalConnectionVerified": false,
-  "kakaoPhysicalSearchVerified": false,
-  "messengerSyntaxCheckAdded": true
+  "workflowSHA256": "5485b104c691c5f25d1cc35211a41b0609d425adadeb7248b3ff2ee517b615d5",
+  "mediaSHA256": "31d5bd24d20bcfd44c627df3f360d0a84dcfdd36737f351de42d397e493184d4"
 }
