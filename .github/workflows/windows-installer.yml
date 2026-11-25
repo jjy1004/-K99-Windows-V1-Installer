@@ -139,7 +139,10 @@ jobs:
         run: node --test lib/k99-local/storage.test.cjs lib/k99-local/customer-directory.test.cjs lib/k99-local/ledger-workbook.test.cjs lib/k99-local/unified-orders.test.cjs lib/k99-local/equipment.test.cjs lib/k99-local/field-operations.test.cjs lib/k99-local/maintenance.test.cjs artifacts/k99-windows/tests/equipment-native.test.cjs artifacts/k99-windows/tests/customer-native.test.cjs artifacts/k99-windows/tests/installer-config.test.cjs scripts/tests/installer-command.test.cjs scripts/tests/desktop-media.test.cjs
       - name: Test field UI business rules (defaults, notices, final QC and handover)
         working-directory: build
-        run: node scripts/test-desktop-field-ui.cjs
+        run: |
+          node --test artifacts/k99-windows/electron/korean-ime.test.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/test-desktop-field-ui.cjs
       - name: Compile installer and uninstaller customizations with NSIS
         id: nsis_customization
         working-directory: build
