@@ -143,6 +143,9 @@ jobs:
           node --test artifacts/k99-windows/electron/korean-ime.test.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/test-desktop-field-ui.cjs
+      - name: Verify diary voice storage, corrections and secure desktop bridge
+        working-directory: build
+        run: node --test lib/k99-local/voice-learning.test.cjs lib/k99-local/laundry-diaries.test.cjs artifacts/k99-windows/electron/diary-voice-client.test.cjs
       - name: Compile installer and uninstaller customizations with NSIS
         id: nsis_customization
         working-directory: build
