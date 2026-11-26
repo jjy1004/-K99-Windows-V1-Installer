@@ -1,0 +1,12 @@
+{
+  "name": "IriunWebcam-2.9.9.exe",
+  "version": "2.9.9",
+  "officialPage": "https://iriun.com",
+  "officialUrl": "https://iriun.com/IriunWebcam-2.9.9.exe",
+  "downloadUrl": "https://github.com/jjy1004/-K99-Windows-V1-Installer/releases/download/v2.4.30/IriunWebcam-2.9.9.exe",
+  "bytes": 2715128,
+  "sha256": "43254fa0d3f1b08c3423fc1b3e5f7293774bc9d982e36f9ea21a68b4973d5767",
+  "verifiedAt": "2026-11-26T01:57:40.688Z",
+  "verification": "공식 Windows 설치 파일과 인증 없는 GitHub 공개 다운로드 파일의 전체 바이트·크기·SHA-256 일치 확인",
+  "k99InstallerRebuilt": false
+}
