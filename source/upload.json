@@ -1,9 +1,9 @@
 {
-  "version": "2.4.29",
+  "version": "2.4.30",
   "source": {
     "name": "K99-Windows-V1-0.3.0-Windows-Build-Kit.zip",
-    "bytes": 27854891,
-    "sha256": "df0d08c509fb9213d52536f6f339072e4fca559696ec12d1c9688fbd3f080d6f"
+    "bytes": 27860510,
+    "sha256": "9d0ccecc05db3b8751b6d26fc5cb1d1bb754a8c520f94746186eac97a96a9bb0"
   },
   "installer": "K99-Smart-Laundry-V2-Setup.exe",
   "windowsBuildVerified": false,
